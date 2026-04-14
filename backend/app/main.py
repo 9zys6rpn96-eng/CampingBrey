@@ -10,6 +10,8 @@ app = FastAPI()
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 app.add_middleware(
@@ -36,17 +38,57 @@ def health():
 
 @app.post("/places", response_model=schemas.PlaceRead)
 def create_place(place: schemas.PlaceCreate, db: Session = Depends(get_db)):
-    db_place = models.Place(name=place.name, type=place.type)
+    db_place = models.Place(
+        name=place.name,
+        type=place.type,
+        capacity=place.capacity
+    )
     db.add(db_place)
     db.commit()
     db.refresh(db_place)
     return db_place
 
 
+@app.post("/places/bulk", response_model=list[schemas.PlaceRead])
+def create_places_bulk(places: list[schemas.PlaceCreate], db: Session = Depends(get_db)):
+    db_places = []
+
+    for place in places:
+        db_place = models.Place(
+            name=place.name,
+            type=place.type,
+            capacity=place.capacity
+        )
+        db.add(db_place)
+        db_places.append(db_place)
+
+    db.commit()
+
+    for place in db_places:
+        db.refresh(place)
+
+    return db_places
+
 @app.get("/places", response_model=list[schemas.PlaceRead])
 def list_places(db: Session = Depends(get_db)):
     places = db.query(models.Place).all()
     return places
+
+@app.put("/places/{place_id}", response_model=schemas.PlaceRead)
+def update_place(place_id: int, updated: schemas.PlaceCreate, db: Session = Depends(get_db)):
+    place = db.query(models.Place).filter(models.Place.id == place_id).first()
+
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+
+    place.name = updated.name
+    place.type = updated.type
+    place.capacity = updated.capacity
+
+    db.commit()
+    db.refresh(place)
+
+    return place
 
 @app.post("/bookings", response_model=schemas.BookingRead)
 def create_booking(booking: schemas.BookingCreate, db: Session = Depends(get_db)):
@@ -63,20 +105,21 @@ def create_booking(booking: schemas.BookingCreate, db: Session = Depends(get_db)
         )
 
     # prüfen, ob es eine Überschneidung mit bestehender Buchung gibt
-    overlapping_booking = (
+    # prüfen, wie viele überlappende Buchungen es bereits gibt
+    overlapping_bookings_count = (
         db.query(models.Booking)
         .filter(
             models.Booking.place_id == booking.place_id,
             booking.start_date < models.Booking.end_date,
             booking.end_date > models.Booking.start_date,
         )
-        .first()
+        .count()
     )
 
-    if overlapping_booking:
+    if overlapping_bookings_count >= place.capacity:
         raise HTTPException(
             status_code=400,
-            detail="Booking overlaps with an existing booking"
+            detail=f"Place is full for this period ({overlapping_bookings_count}/{place.capacity} booked)"
         )
 
     db_booking = models.Booking(

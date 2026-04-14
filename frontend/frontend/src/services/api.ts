@@ -52,3 +52,24 @@ export async function deleteBooking(bookingId: number) {
 
   return res.json();
 }
+
+export async function updatePlace(
+  id: number,
+  data: { name: string; type: string; capacity: number }
+) {
+  const res = await fetch(`${API_BASE}/places/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.detail || "Fehler beim Aktualisieren des Platzes");
+  }
+
+  return res.json();
+}
+

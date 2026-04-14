@@ -4,6 +4,7 @@ export interface Place {
   id: number;
   name: string;
   type: string | null;
+  capacity: number;
 }
 
 export interface Booking {

@@ -8,7 +8,7 @@ class Place(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     type = Column(String, nullable=True)  # Zelt, Wohnwagen, etc.
-
+    capacity = Column(Integer, nullable=False, default=1)
     bookings = relationship("Booking", back_populates="place")
 
 class Booking(Base):

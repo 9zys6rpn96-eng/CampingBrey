@@ -1,6 +1,4 @@
 from datetime import date
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -8,7 +6,8 @@ from pydantic import BaseModel
 
 class PlaceBase(BaseModel):
     name: str
-    type: Optional[str] = None  # z.B. Wohnmobil, Zelt, etc.
+    type: str | None = None
+    capacity: int = 1
 
 
 class PlaceCreate(PlaceBase):
@@ -19,7 +18,7 @@ class PlaceRead(PlaceBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ---------- Booking ----------
@@ -38,4 +37,4 @@ class BookingRead(BookingBase):
     place_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
