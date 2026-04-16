@@ -202,6 +202,19 @@ function App() {
     selectedPlaceId !== null
       ? bookings.filter((b) => b.place_id === selectedPlaceId)
       : [];
+    const statusCounts = useMemo(() => {
+    return placeStatuses.reduce(
+      (acc, status) => {
+        if (status.status === "green") acc.green += 1;
+        else if (status.status === "yellow") acc.yellow += 1;
+        else if (status.status === "red") acc.red += 1;
+        else if (status.status === "gray") acc.gray += 1;
+
+        return acc;
+      },
+      { green: 0, yellow: 0, red: 0, gray: 0 }
+    );
+  }, [placeStatuses]);
 
   function handleDateChange(value: string) {
     if (!value) return;
@@ -401,10 +414,10 @@ function App() {
             <div style={dateInputWrapperStyle}>
               <label style={labelStyle}>Startdatum wählen</label>
               <input
-                type="date"
-                value={selectedDateIso}
-                onChange={(e) => handleDateChange(e.target.value)}
-                style={inputStyle}
+                  type="date"
+                  value={selectedDateIso}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  style={inputStyle}
               />
             </div>
 
@@ -428,137 +441,160 @@ function App() {
           </div>
         </section>
 
+        <section style={statsOverviewGridStyle}>
+          <div style={statsOverviewCardStyle}>
+            <div style={statsOverviewLabelStyle}>🟢 Frei</div>
+            <div style={statsOverviewValueStyle}>{statusCounts.green}</div>
+          </div>
+
+          <div style={statsOverviewCardStyle}>
+            <div style={statsOverviewLabelStyle}>🟡 Teilbelegt</div>
+            <div style={statsOverviewValueStyle}>{statusCounts.yellow}</div>
+          </div>
+
+          <div style={statsOverviewCardStyle}>
+            <div style={statsOverviewLabelStyle}>🔴 Voll</div>
+            <div style={statsOverviewValueStyle}>{statusCounts.red}</div>
+          </div>
+
+          <div style={statsOverviewCardStyle}>
+            <div style={statsOverviewLabelStyle}>⚫ Dauercamper</div>
+            <div style={statsOverviewValueStyle}>{statusCounts.gray}</div>
+          </div>
+        </section>
+
         {currentUser.role === "developer" && (
-          <section style={cardStyle}>
-            <div style={cardHeaderStyle}>
-              <div>
-                <h2 style={cardTitleStyle}>Benutzerverwaltung</h2>
-                <p style={cardSubtitleStyle}>
-                  Neuen Operator oder Developer für die Anwendung anlegen.
-                </p>
-              </div>
-            </div>
-
-            <div style={formRowStyle}>
-              <div style={fieldBlockStyle}>
-                <label style={labelStyle}>Benutzername</label>
-                <input
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  style={inputStyle}
-                />
+            <section style={cardStyle}>
+              <div style={cardHeaderStyle}>
+                <div>
+                  <h2 style={cardTitleStyle}>Benutzerverwaltung</h2>
+                  <p style={cardSubtitleStyle}>
+                    Neuen Operator oder Developer für die Anwendung anlegen.
+                  </p>
+                </div>
               </div>
 
-              <div style={fieldBlockStyle}>
-                <label style={labelStyle}>Passwort</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  style={inputStyle}
-                />
+              <div style={formRowStyle}>
+                <div style={fieldBlockStyle}>
+                  <label style={labelStyle}>Benutzername</label>
+                  <input
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      style={inputStyle}
+                  />
+                </div>
+
+                <div style={fieldBlockStyle}>
+                  <label style={labelStyle}>Passwort</label>
+                  <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      style={inputStyle}
+                  />
+                </div>
+
+                <div style={fieldBlockStyleNarrow}>
+                  <label style={labelStyle}>Rolle</label>
+                  <select
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value)}
+                      style={inputStyle}
+                  >
+                    <option value="operator">Operator</option>
+                    <option value="developer">Developer</option>
+                  </select>
+                </div>
+
+                <div style={actionFieldStyle}>
+                  <button
+                      onClick={handleCreateUser}
+                      disabled={!newUsername.trim() || !newPassword.trim()}
+                      style={{
+                        ...primaryButtonStyle,
+                        opacity: !newUsername.trim() || !newPassword.trim() ? 0.6 : 1,
+                        cursor:
+                            !newUsername.trim() || !newPassword.trim()
+                                ? "not-allowed"
+                                : "pointer",
+                      }}
+                  >
+                    Benutzer anlegen
+                  </button>
+                </div>
               </div>
 
-              <div style={fieldBlockStyleNarrow}>
-                <label style={labelStyle}>Rolle</label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="operator">Operator</option>
-                  <option value="developer">Developer</option>
-                </select>
-              </div>
-
-              <div style={actionFieldStyle}>
-                <button
-                  onClick={handleCreateUser}
-                  disabled={!newUsername.trim() || !newPassword.trim()}
-                  style={{
-                    ...primaryButtonStyle,
-                    opacity: !newUsername.trim() || !newPassword.trim() ? 0.6 : 1,
-                    cursor:
-                      !newUsername.trim() || !newPassword.trim()
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
-                >
-                  Benutzer anlegen
-                </button>
-              </div>
-            </div>
-
-            {userCreateSuccess && <div style={successBoxStyle}>{userCreateSuccess}</div>}
-            {userCreateError && <div style={errorBoxStyle}>{userCreateError}</div>}
-          </section>
+              {userCreateSuccess && <div style={successBoxStyle}>{userCreateSuccess}</div>}
+              {userCreateError && <div style={errorBoxStyle}>{userCreateError}</div>}
+            </section>
         )}
 
         {loading && !hasLoadedOnce && (
-          <div style={loadingCardStyle}>Lade Daten...</div>
+            <div style={loadingCardStyle}>Lade Daten...</div>
         )}
 
         {error && <div style={errorBoxStyle}>{error}</div>}
 
         {!error && hasLoadedOnce && (
-          <div style={dashboardGridStyle}>
-            <aside style={sidebarCardStyle}>
-              <div style={cardHeaderStyle}>
-                <div>
-                  <h2 style={cardTitleStyle}>Plätze</h2>
-                  <p style={cardSubtitleStyle}>
-                    {places.length} Plätze verfügbar
-                  </p>
-                </div>
-              </div>
-
-              <div style={sidebarContentStyle}>
-                <PlaceList
-                  places={places}
-                  selectedPlaceId={selectedPlaceId}
-                  onSelect={handleSelectPlace}
-                />
-              </div>
-            </aside>
-
-            <main style={mainColumnStyle}>
-              <section style={cardStyle}>
+            <div style={dashboardGridStyle}>
+              <aside style={sidebarCardStyle}>
                 <div style={cardHeaderStyle}>
                   <div>
-                    <h2 style={cardTitleStyle}>Karte</h2>
+                    <h2 style={cardTitleStyle}>Plätze</h2>
                     <p style={cardSubtitleStyle}>
-                      Wähle einen Platz direkt über die Karte oder über die Liste links.
+                      {places.length} Plätze verfügbar
                     </p>
                   </div>
                 </div>
 
-                <CampingMap
-                  places={places}
-                  placeStatuses={placeStatuses}
-                  selectedPlaceId={selectedPlaceId}
-                  onSelectPlace={handleSelectPlace}
-                  isDeveloper={currentUser.role === "developer"}
-                />
-              </section>
-
-              <section style={cardStyle}>
-                <div style={cardHeaderStyle}>
-                  <div>
-                    <h2 style={cardTitleStyle}>Platzdetails</h2>
-                    <p style={cardSubtitleStyle}>
-                      Informationen, Belegung und Buchungen des ausgewählten Platzes.
-                    </p>
-                  </div>
+                <div style={sidebarContentStyle}>
+                  <PlaceList
+                      places={places}
+                      placeStatuses={placeStatuses}
+                      selectedPlaceId={selectedPlaceId}
+                      onSelect={handleSelectPlace}
+                  />
                 </div>
+              </aside>
 
-                <PlaceDetailPanel
-                  place={selectedPlace}
-                  bookings={bookingsForSelectedPlace}
-                  onBookingCreated={reloadData}
-                />
-              </section>
-            </main>
-          </div>
+              <main style={mainColumnStyle}>
+                <section style={cardStyle}>
+                  <div style={cardHeaderStyle}>
+                    <div>
+                      <h2 style={cardTitleStyle}>Karte</h2>
+                      <p style={cardSubtitleStyle}>
+                        Wähle einen Platz direkt über die Karte oder über die Liste links.
+                      </p>
+                    </div>
+                  </div>
+
+                  <CampingMap
+                      places={places}
+                      placeStatuses={placeStatuses}
+                      selectedPlaceId={selectedPlaceId}
+                      onSelectPlace={handleSelectPlace}
+                      isDeveloper={currentUser.role === "developer"}
+                  />
+                </section>
+
+                <section style={cardStyle}>
+                  <div style={cardHeaderStyle}>
+                    <div>
+                      <h2 style={cardTitleStyle}>Platzdetails</h2>
+                      <p style={cardSubtitleStyle}>
+                        Informationen, Belegung und Buchungen des ausgewählten Platzes.
+                      </p>
+                    </div>
+                  </div>
+
+                  <PlaceDetailPanel
+                      place={selectedPlace}
+                      bookings={bookingsForSelectedPlace}
+                      onBookingCreated={reloadData}
+                  />
+                </section>
+              </main>
+            </div>
         )}
       </div>
     </div>
@@ -587,7 +623,7 @@ const colors = {
 const appShellStyle: React.CSSProperties = {
   minHeight: "100vh",
   background:
-    "linear-gradient(180deg, #e8f5ec 0%, #eef6f1 220px, #f7faf8 220px, #f7faf8 100%)",
+      "linear-gradient(180deg, #e8f5ec 0%, #eef6f1 220px, #f7faf8 220px, #f7faf8 100%)",
   color: colors.text,
   fontFamily: "system-ui, sans-serif",
 };
@@ -947,6 +983,34 @@ const sectionTitleSmallStyle: React.CSSProperties = {
 const sectionMutedTextStyle: React.CSSProperties = {
   margin: "0.35rem 0 0 0",
   color: colors.muted,
+};
+
+const statsOverviewGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: "0.85rem",
+  marginBottom: "1rem",
+};
+
+const statsOverviewCardStyle: React.CSSProperties = {
+  backgroundColor: "#ffffff",
+  border: `1px solid ${colors.border}`,
+  borderRadius: "1rem",
+  padding: "1rem",
+  boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
+};
+
+const statsOverviewLabelStyle: React.CSSProperties = {
+  fontSize: "0.88rem",
+  color: colors.muted,
+  fontWeight: 700,
+  marginBottom: "0.35rem",
+};
+
+const statsOverviewValueStyle: React.CSSProperties = {
+  fontSize: "1.55rem",
+  fontWeight: 800,
+  color: colors.text,
 };
 
 export default App;
