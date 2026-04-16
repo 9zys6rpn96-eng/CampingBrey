@@ -19,4 +19,16 @@ class Booking(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
 
+    guest_name = Column(String, nullable=False)
+    vehicle_size = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+
     place = relationship("Place", back_populates="bookings")
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False)  # developer | operator

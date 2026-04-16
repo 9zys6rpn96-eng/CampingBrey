@@ -20,12 +20,26 @@ class PlaceRead(PlaceBase):
     class Config:
         from_attributes = True
 
+class PlaceStatusRead(PlaceRead):
+    start_date: date
+    end_date: date
+    max_occupancy: int
+    occupied_days: int
+    fully_booked_days: int
+    status: str
+
+    class Config:
+        from_attributes = True
+
 
 # ---------- Booking ----------
 
 class BookingBase(BaseModel):
     start_date: date
     end_date: date
+    guest_name: str
+    vehicle_size: str | None = None
+    notes: str | None = None
 
 
 class BookingCreate(BookingBase):
@@ -35,6 +49,20 @@ class BookingCreate(BookingBase):
 class BookingRead(BookingBase):
     id: int
     place_id: int
+
+    class Config:
+        from_attributes = True
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str
+
+
+class UserCreatedResponse(BaseModel):
+    id: int
+    username: str
+    role: str
 
     class Config:
         from_attributes = True

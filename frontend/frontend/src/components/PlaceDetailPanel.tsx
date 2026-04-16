@@ -19,6 +19,9 @@ function formatDate(dateString: string) {
   });
 }
 
+const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese"] as const;
+const CUSTOM_PLACE_TYPE = "__custom__";
+
 export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -27,15 +30,27 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
 
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("");
+  const [selectedTypeOption, setSelectedTypeOption] = useState<string>("Stellplatz");
   const [editCapacity, setEditCapacity] = useState(1);
+  const [guestName, setGuestName] = useState("");
+  const [vehicleSize, setVehicleSize] = useState("");
+  const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    if (place) {
-      setEditName(place.name);
-      setEditType(place.type || "");
-      setEditCapacity(place.capacity || 1);
+useEffect(() => {
+  if (place) {
+    const currentType = place.type || "Stellplatz";
+
+    setEditName(place.name);
+    setEditType(currentType);
+    setEditCapacity(place.capacity || 1);
+
+    if (PLACE_TYPE_OPTIONS.includes(currentType as (typeof PLACE_TYPE_OPTIONS)[number])) {
+      setSelectedTypeOption(currentType);
+    } else {
+      setSelectedTypeOption(CUSTOM_PLACE_TYPE);
     }
-  }, [place]);
+  }
+}, [place]);
 
   if (!place) {
     return <p>Bitte einen Platz auswählen.</p>;
@@ -64,25 +79,35 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
     : 0;
 
   const hasConflict = overlappingBookingsCount >= place.capacity;
+  const isPermanentCamper = place.type === "Dauercamper";
 
   async function handleSubmit() {
     if (!startDate || !endDate) {
       setErrorMessage("Bitte Start- und Enddatum auswählen.");
       return;
     }
-
+    if (!guestName.trim()) {
+      setErrorMessage("Bitte einen Namen eingeben.");
+      return;
+    }
     try {
       setErrorMessage(null);
 
       await createBooking({
-        place_id: place.id,
-        start_date: startDate,
-        end_date: endDate,
-      });
+          place_id: place.id,
+          start_date: startDate,
+          end_date: endDate,
+          guest_name: guestName,
+          vehicle_size: vehicleSize,
+          notes: notes,
+        });
 
       await onBookingCreated();
       setStartDate("");
       setEndDate("");
+      setGuestName("");
+      setVehicleSize("");
+      setNotes("");
     } catch (err: any) {
       setErrorMessage(err.message);
     }
@@ -157,9 +182,20 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
               }}
           >
               {nextBooking ? (
-                  <>
-                      Nächste Buchung ab <strong>{formatDate(nextBooking.start_date)}</strong>
-                  </>
+                  <div
+                      style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.35rem",
+                      }}
+                  >
+                      <div>
+                          Gebucht ab <strong>{formatDate(nextBooking.start_date)}</strong>
+                      </div>
+                      <div>
+                          Gebucht bis <strong>{formatDate(nextBooking.end_date)}</strong>
+                      </div>
+                  </div>
               ) : (
                   <>Keine zukünftigen Buchungen</>
               )}
@@ -230,15 +266,50 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
                       >
                           Typ
                       </label>
-                      <input
-                          value={editType}
-                          onChange={(e) => setEditType(e.target.value)}
+
+                      <select
+                          value={selectedTypeOption}
+                          onChange={(e) => {
+                              const value = e.target.value;
+                              setSelectedTypeOption(value);
+
+                              if (value !== CUSTOM_PLACE_TYPE) {
+                                  setEditType(value);
+                              } else {
+                                  setEditType("");
+                              }
+                          }}
                           style={{
                               padding: "0.5rem",
                               border: "1px solid #d1d5db",
                               borderRadius: "0.5rem",
+                              backgroundColor: "white",
+                              minWidth: "180px",
                           }}
-                      />
+                      >
+                          {PLACE_TYPE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                  {option}
+                              </option>
+                          ))}
+                          <option value={CUSTOM_PLACE_TYPE}>Anderer Typ...</option>
+                      </select>
+
+                      {selectedTypeOption === CUSTOM_PLACE_TYPE && (
+                          <input
+                              value={editType}
+                              onChange={(e) => setEditType(e.target.value)}
+                              placeholder="Eigenen Typ eingeben"
+                              style={{
+                                  marginTop: "0.5rem",
+                                  padding: "0.5rem",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "0.5rem",
+                                  display: "block",
+                                  minWidth: "180px",
+                              }}
+                          />
+                      )}
                   </div>
 
                   <div>
@@ -309,7 +380,71 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
               <h3 style={{marginBottom: "0.75rem", color: "#111827"}}>
                   Neue Buchung
               </h3>
+              <div>
+                  <label
+                      style={{
+                          display: "block",
+                          fontSize: "0.9rem",
+                          marginBottom: "0.25rem",
+                      }}
+                  >
+                      Name
+                  </label>
+                  <input
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      style={{
+                          padding: "0.5rem",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "0.5rem",
+                          minWidth: "180px",
+                      }}
+                  />
+              </div>
 
+              <div>
+                  <label
+                      style={{
+                          display: "block",
+                          fontSize: "0.9rem",
+                          marginBottom: "0.25rem",
+                      }}
+                  >
+                      Fahrzeuggröße
+                  </label>
+                  <input
+                      value={vehicleSize}
+                      onChange={(e) => setVehicleSize(e.target.value)}
+                      style={{
+                          padding: "0.5rem",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "0.5rem",
+                          minWidth: "160px",
+                      }}
+                  />
+              </div>
+
+              <div style={{minWidth: "240px"}}>
+                  <label
+                      style={{
+                          display: "block",
+                          fontSize: "0.9rem",
+                          marginBottom: "0.25rem",
+                      }}
+                  >
+                      Weitere Informationen
+                  </label>
+                  <input
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      style={{
+                          padding: "0.5rem",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "0.5rem",
+                          width: "100%",
+                      }}
+                  />
+              </div>
               <div
                   style={{
                       display: "flex",
@@ -365,17 +500,24 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
                   <div style={{alignSelf: "end"}}>
                       <button
                           onClick={handleSubmit}
-                          disabled={!startDate || !endDate || hasConflict}
+                          disabled={!startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper}
                           style={{
                               padding: "0.6rem 1rem",
                               borderRadius: "0.5rem",
                               border: "1px solid #2563eb",
                               backgroundColor:
-                                  !startDate || !endDate || hasConflict ? "#9ca3af" : "#2563eb",
+                                  !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
+                                      ? "#9ca3af"
+                                      : "#2563eb",
                               color: "white",
                               cursor:
-                                  !startDate || !endDate || hasConflict ? "not-allowed" : "pointer",
-                              opacity: !startDate || !endDate || hasConflict ? 0.7 : 1,
+                                  !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
+                                      ? "not-allowed"
+                                      : "pointer",
+                              opacity:
+                                  !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
+                                      ? 0.7
+                                      : 1,
                           }}
                       >
                           Buchen
@@ -398,6 +540,19 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
                           : `✅ Zeitraum verfügbar (${overlappingBookingsCount}/${place.capacity} belegt)`}
                   </p>
               )}
+              {isPermanentCamper && (
+                  <p
+                    style={{
+                      marginTop: "0.75rem",
+                      color: "#374151",
+                      backgroundColor: "#e5e7eb",
+                      padding: "0.5rem 0.75rem",
+                      borderRadius: "0.5rem",
+                    }}
+                  >
+                    Dieser Platz ist als Dauercamper markiert und kann nicht gebucht werden.
+                  </p>
+                )}
 
               {errorMessage && (
                   <p
