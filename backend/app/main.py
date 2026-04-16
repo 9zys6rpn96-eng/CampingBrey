@@ -165,6 +165,27 @@ def calculate_place_status_for_range(
         "status": status,
     }
 
+def would_exceed_capacity(
+    place: models.Place,
+    existing_bookings: list[models.Booking],
+    start_date: date,
+    end_date: date,
+) -> bool:
+    total_days = (end_date - start_date).days
+
+    for day_offset in range(total_days):
+        current_day = start_date + timedelta(days=day_offset)
+
+        occupancy = sum(
+            1
+            for existing_booking in existing_bookings
+            if existing_booking.start_date <= current_day < existing_booking.end_date
+        )
+
+        if occupancy >= place.capacity:
+            return True
+
+    return False
 
 @app.get("/health")
 def health():
@@ -359,21 +380,26 @@ def create_booking(
             detail="Dauercamper-Plätze können nicht gebucht werden"
         )
 
-    overlapping_bookings_count = (
-        db.query(models.Booking)
-        .filter(
-            models.Booking.place_id == booking.place_id,
-            booking.start_date < models.Booking.end_date,
-            booking.end_date > models.Booking.start_date,
+        overlapping_bookings = (
+            db.query(models.Booking)
+            .filter(
+                models.Booking.place_id == booking.place_id,
+                booking.start_date < models.Booking.end_date,
+                booking.end_date > models.Booking.start_date,
+            )
+            .all()
         )
-        .count()
-    )
 
-    if overlapping_bookings_count >= place.capacity:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Place is full for this period ({overlapping_bookings_count}/{place.capacity} booked)"
-        )
+        if would_exceed_capacity(
+                place=place,
+                existing_bookings=overlapping_bookings,
+                start_date=booking.start_date,
+                end_date=booking.end_date,
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Place is full for at least one day in this period"
+            )
 
     db_booking = models.Booking(
         place_id=booking.place_id,

@@ -19,6 +19,40 @@ function formatDate(dateString: string) {
   });
 }
 
+function getMaxOccupancyInRange(
+  bookings: Booking[],
+  startDate: string,
+  endDate: string
+) {
+  if (!startDate || !endDate || startDate >= endDate) {
+    return 0;
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  let maxOccupancy = 0;
+
+  for (
+    let current = new Date(start);
+    current < end;
+    current.setDate(current.getDate() + 1)
+  ) {
+    const currentIso = current.toISOString().split("T")[0];
+
+    const occupancy = bookings.filter(
+      (booking) =>
+        booking.start_date <= currentIso && currentIso < booking.end_date
+    ).length;
+
+    if (occupancy > maxOccupancy) {
+      maxOccupancy = occupancy;
+    }
+  }
+
+  return maxOccupancy;
+}
+
 function toIsoDate(date: Date) {
   return date.toISOString().split("T")[0];
 }
@@ -137,12 +171,12 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
     (booking) => today >= booking.start_date && today < booking.end_date
   ).length;
 
-  const overlappingBookingsCount =
+  const maxOccupancyInSelectedRange =
     startDate && endDate
-      ? bookings.filter((b) => startDate < b.end_date && endDate > b.start_date).length
+      ? getMaxOccupancyInRange(bookings, startDate, endDate)
       : 0;
 
-  const hasConflict = overlappingBookingsCount >= place.capacity;
+  const hasConflict = maxOccupancyInSelectedRange >= place.capacity;
   const isPermanentCamper = place.type === "Dauercamper";
 
   function applyQuickRange(start: string, end: string) {
@@ -510,18 +544,18 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
             </div>
 
             {startDate && endDate && (
-                <div
-                    style={{
-                        ...infoBoxStyle,
-                        backgroundColor: hasConflict ? "#fee2e2" : "#dcfce7",
-                        color: hasConflict ? "#991b1b" : "#166534",
-                        borderColor: hasConflict ? "#fecaca" : "#bbf7d0",
-                    }}
-                >
-                    {hasConflict
-                        ? `⚠️ Zeitraum voll belegt (${overlappingBookingsCount}/${place.capacity})`
-                        : `✅ Zeitraum verfügbar (${overlappingBookingsCount}/${place.capacity} belegt)`}
-                </div>
+              <div
+                style={{
+                  ...infoBoxStyle,
+                  backgroundColor: hasConflict ? "#fee2e2" : "#dcfce7",
+                  color: hasConflict ? "#991b1b" : "#166534",
+                  borderColor: hasConflict ? "#fecaca" : "#bbf7d0",
+                }}
+              >
+                {hasConflict
+                  ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${place.capacity})`
+                  : `✅ Zeitraum verfügbar (max. ${maxOccupancyInSelectedRange}/${place.capacity} gleichzeitig belegt)`}
+              </div>
             )}
 
             {isPermanentCamper && (
