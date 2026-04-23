@@ -156,7 +156,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
       </div>
     );
   }
-
+  const currentPlace = place;
   const isCurrentlyBooked = bookings.some(
     (booking) => today >= booking.start_date && today < booking.end_date
   );
@@ -176,8 +176,8 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
       ? getMaxOccupancyInRange(bookings, startDate, endDate)
       : 0;
 
-  const hasConflict = maxOccupancyInSelectedRange >= place.capacity;
-  const isPermanentCamper = place.type === "Dauercamper";
+  const hasConflict = maxOccupancyInSelectedRange >= currentPlace.capacity;
+  const isPermanentCamper = currentPlace.type === "Dauercamper";
 
   function applyQuickRange(start: string, end: string) {
       setStartDate(start);
@@ -200,7 +200,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
       setErrorMessage(null);
 
       await createBooking({
-        place_id: place.id,
+        place_id: currentPlace.id,
         start_date: startDate,
         end_date: endDate,
         guest_name: guestName,
@@ -223,7 +223,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
     try {
       setErrorMessage(null);
 
-      await updatePlace(place.id, {
+      await updatePlace(currentPlace.id, {
         name: editName,
         type: editType,
         capacity: editCapacity,
@@ -261,10 +261,10 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
       <section style={heroSectionStyle}>
         <div style={heroLeftStyle}>
           <div style={eyebrowStyle}>Ausgewählter Platz</div>
-          <h2 style={heroTitleStyle}>Platz {place.name}</h2>
+          <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
           <div style={metaRowStyle}>
-            <span style={metaBadgeStyle}>{place.type || "Stellplatz"}</span>
-            <span style={metaBadgeStyle}>Kapazität {place.capacity}</span>
+            <span style={metaBadgeStyle}>{currentPlace.type || "Stellplatz"}</span>
+            <span style={metaBadgeStyle}>Kapazität {currentPlace.capacity}</span>
           </div>
         </div>
 
@@ -284,7 +284,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
         <div style={statCardStyle}>
           <div style={statLabelStyle}>Aktuelle Belegung</div>
           <div style={statValueStyle}>
-            {currentOccupancy} / {place.capacity}
+            {currentOccupancy} / {currentPlace.capacity}
           </div>
           <div style={statHelpStyle}>gleichzeitig belegte Einheiten heute</div>
         </div>
@@ -403,7 +403,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
           <div>
             <h3 style={sectionTitleStyle}>Buchungen</h3>
             <p style={sectionSubtitleStyle}>
-              Alle vorhandenen Buchungen für Platz {place.name}.
+              Alle vorhandenen Buchungen für Platz {currentPlace.name}.
             </p>
           </div>
         </div>
@@ -553,8 +553,8 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
                 }}
               >
                 {hasConflict
-                  ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${place.capacity})`
-                  : `✅ Zeitraum verfügbar (max. ${maxOccupancyInSelectedRange}/${place.capacity} gleichzeitig belegt)`}
+                  ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${currentPlace.capacity})`
+                  : `✅ Zeitraum verfügbar (max. ${maxOccupancyInSelectedRange}/${currentPlace.capacity} gleichzeitig belegt)`}
               </div>
             )}
 

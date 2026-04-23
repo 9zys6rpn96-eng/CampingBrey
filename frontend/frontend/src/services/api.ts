@@ -1,6 +1,6 @@
 import type { Place, Booking, PlaceStatus } from "../types";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 function getAuthToken() {
   return localStorage.getItem("auth_token");
@@ -9,7 +9,7 @@ function getAuthToken() {
 async function apiGet<T>(path: string): Promise<T> {
   const token = getAuthToken();
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: token
       ? {
           Authorization: `Bearer ${token}`,
@@ -30,7 +30,7 @@ export async function login(username: string, password: string) {
   body.append("username", username);
   body.append("password", password);
 
-  const res = await fetch(`${API_BASE}/login`, {
+  const res = await fetch(`${API_BASE_URL}/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -80,7 +80,7 @@ export async function createBooking(data: {
 }) {
   const token = getAuthToken();
 
-  const res = await fetch(`${API_BASE}/bookings`, {
+  const res = await fetch(`${API_BASE_URL}/bookings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -100,7 +100,7 @@ export async function createBooking(data: {
 export async function deleteBooking(bookingId: number) {
   const token = getAuthToken();
 
-  const res = await fetch(`${API_BASE}/bookings/${bookingId}`, {
+  const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
     method: "DELETE",
     headers: token
       ? {
@@ -123,7 +123,7 @@ export async function updatePlace(
 ) {
   const token = getAuthToken();
 
-  const res = await fetch(`${API_BASE}/places/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/places/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -147,7 +147,7 @@ export async function createUser(data: {
 }) {
   const token = localStorage.getItem("auth_token");
 
-  const res = await fetch(`${API_BASE}/users`, {
+  const res = await fetch(`${API_BASE_URL}/users`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
