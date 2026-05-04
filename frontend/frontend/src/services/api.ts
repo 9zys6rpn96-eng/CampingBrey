@@ -45,6 +45,27 @@ export async function login(username: string, password: string) {
 
   return res.json();
 }
+export async function markNoShow(bookingId: number) {
+  const token = getAuthToken();
+
+  const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/noshow`, {
+    method: "PUT",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.detail || "Fehler beim Setzen von 'nicht erschienen'"
+    );
+  }
+
+  return res.json();
+}
 
 export async function fetchMe(): Promise<{ username: string; role: string }> {
   return apiGet<{ username: string; role: string }>("/me");

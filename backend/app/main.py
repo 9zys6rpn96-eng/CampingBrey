@@ -361,6 +361,17 @@ def list_places_with_status(
 
     return result
 
+@app.put("/bookings/{booking_id}/noshow")
+def mark_no_show(booking_id: int, db: Session = Depends(get_db)):
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    booking.status = "noshow"
+    db.commit()
+
+    return {"message": "Booking marked as no-show"}
 
 @app.put("/places/{place_id}", response_model=schemas.PlaceRead)
 def update_place(

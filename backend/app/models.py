@@ -22,6 +22,7 @@ class Booking(Base):
     guest_name = Column(String, nullable=False)
     vehicle_size = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    status = Column(String, default="active")
 
     place = relationship("Place", back_populates="bookings")
 

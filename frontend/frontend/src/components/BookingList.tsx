@@ -14,6 +14,12 @@ function formatDate(dateString: string) {
   });
 }
 
+function getStatusLabel(status?: string) {
+  if (status === "noshow") return "🟠 Nicht erschienen";
+  if (status === "cancelled") return "🔴 Storniert";
+  return "🟢 Aktiv";
+}
+
 function getStayLength(startDate: string, endDate: string) {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -71,95 +77,115 @@ export function BookingList({ bookings, onDelete }: BookingListProps) {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ flex: 1, minWidth: "220px" }}>
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: "#111827",
-                  marginBottom: "0.3rem",
-                }}
-              >
-                {b.guest_name}
-              </div>
-
-              <div
-                style={{
-                  color: "#374151",
-                  marginBottom: "0.35rem",
-                  fontSize: "0.95rem",
-                }}
-              >
-                {formatDate(b.start_date)} – {formatDate(b.end_date)}
-              </div>
-
-              <div
-                style={{
-                  color: "#6b7280",
-                  fontSize: "0.88rem",
-                  marginBottom: b.vehicle_size || b.notes ? "0.55rem" : 0,
-                }}
-              >
-                Aufenthalt: {getStayLength(b.start_date, b.end_date)}
-              </div>
-
-              {(b.vehicle_size || b.notes) && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.3rem",
-                    marginTop: "0.35rem",
-                  }}
-                >
-                  {b.vehicle_size && (
-                    <div
+              <div style={{flex: 1, minWidth: "220px"}}>
+                  <div
                       style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        width: "fit-content",
-                        padding: "0.25rem 0.55rem",
-                        borderRadius: "999px",
-                        backgroundColor: "#eff6ff",
-                        color: "#1d4ed8",
-                        fontSize: "0.85rem",
-                        fontWeight: 500,
+                          fontWeight: 700,
+                          fontSize: "1rem",
+                          color: "#111827",
+                          marginBottom: "0.3rem",
                       }}
-                    >
-                      🚐 {b.vehicle_size}
-                    </div>
-                  )}
+                  >
+                      {b.guest_name}
+                  </div>
 
-                  {b.notes && (
-                    <div
+                  <div
                       style={{
-                        padding: "0.55rem 0.7rem",
-                        borderRadius: "0.65rem",
-                        backgroundColor: "#f9fafb",
-                        border: "1px solid #e5e7eb",
-                        color: "#374151",
-                        fontSize: "0.9rem",
-                        lineHeight: 1.4,
+                          color: "#374151",
+                          marginBottom: "0.35rem",
+                          fontSize: "0.95rem",
                       }}
-                    >
-                      {b.notes}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  >
+                      {formatDate(b.start_date)} – {formatDate(b.end_date)}
+                  </div>
+                  <div
+                      style={{
+                          marginBottom: "0.35rem",
+                      }}
+                  >
+                  <span
+                      style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "0.25rem 0.55rem",
+                          borderRadius: "999px",
+                          backgroundColor: "#f3f4f6",
+                          border: "1px solid #e5e7eb",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: "#374151",
+                      }}
+                  >
+                    {getStatusLabel(b.status)}
+                  </span>
+                  </div>
+                  <div
+                      style={{
+                          color: "#6b7280",
+                          fontSize: "0.88rem",
+                          marginBottom: b.vehicle_size || b.notes ? "0.55rem" : 0,
+                      }}
+                  >
+                      Aufenthalt: {getStayLength(b.start_date, b.end_date)}
+                  </div>
 
-            {onDelete && (
-              <button
-                onClick={() => onDelete(b.id)}
-                style={{
-                  padding: "0.5rem 0.85rem",
-                  borderRadius: "0.6rem",
-                  border: "1px solid #dc2626",
-                  backgroundColor: "#dc2626",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: 600,
+                  {(b.vehicle_size || b.notes) && (
+                      <div
+                          style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "0.3rem",
+                              marginTop: "0.35rem",
+                          }}
+                      >
+                          {b.vehicle_size && (
+                              <div
+                                  style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      width: "fit-content",
+                                      padding: "0.25rem 0.55rem",
+                                      borderRadius: "999px",
+                                      backgroundColor: "#eff6ff",
+                                      color: "#1d4ed8",
+                                      fontSize: "0.85rem",
+                                      fontWeight: 500,
+                                  }}
+                              >
+                                  🚐 {b.vehicle_size}
+                              </div>
+                          )}
+
+                          {b.notes && (
+                              <div
+                                  style={{
+                                      padding: "0.55rem 0.7rem",
+                                      borderRadius: "0.65rem",
+                                      backgroundColor: "#f9fafb",
+                                      border: "1px solid #e5e7eb",
+                                      color: "#374151",
+                                      fontSize: "0.9rem",
+                                      lineHeight: 1.4,
+                                  }}
+                              >
+                                  {b.notes}
+                              </div>
+                          )}
+                      </div>
+                  )}
+              </div>
+
+              {onDelete && (
+                  <button
+                      onClick={() => onDelete(b.id)}
+                      style={{
+                          padding: "0.5rem 0.85rem",
+                          borderRadius: "0.6rem",
+                          border: "1px solid #dc2626",
+                          backgroundColor: "#dc2626",
+                          color: "white",
+                          cursor: "pointer",
+                          fontWeight: 600,
                 }}
               >
                 Storno

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Place, Booking } from "../types";
 import { BookingList } from "./BookingList";
 import { BookingTimeline } from "./BookingTimeline";
-import { createBooking, deleteBooking, updatePlace } from "../services/api";
+import { createBooking, deleteBooking, updatePlace, markNoShow } from "../services/api";
 
 interface Props {
   place: Place | null;
@@ -611,6 +611,26 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
                         >
                             Stornieren
                         </button>
+                        <button
+                            onClick={async () => {
+                                if (bookingToDelete === null) return;
+
+                                await markNoShow(bookingToDelete);
+                                setBookingToDelete(null);
+                                await onBookingCreated();
+                            }}
+                            style={{
+                                background: "#f59e0b",
+                                color: "white",
+                                borderRadius: "6px",
+                                padding: "6px 10px",
+                                border: "none",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Nicht erschienen
+                        </button>
+
                     </div>
                 </div>
             </div>
@@ -628,8 +648,8 @@ const emptyStateStyle: React.CSSProperties = {
 };
 
 const emptyIconStyle: React.CSSProperties = {
-  fontSize: "2rem",
-  marginBottom: "0.75rem",
+    fontSize: "2rem",
+    marginBottom: "0.75rem",
 };
 
 const emptyTitleStyle: React.CSSProperties = {
