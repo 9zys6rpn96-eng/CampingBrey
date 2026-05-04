@@ -10,6 +10,12 @@ function parseLocalDate(dateString: string) {
   return new Date(Number(year), Number(month) - 1, Number(day));
 }
 
+function getStatusLabel(status?: string) {
+  if (status === "noshow") return "Nicht erschienen";
+  if (status === "cancelled") return "Storniert";
+  return "Aktiv";
+}
+
 function formatDate(dateString: string) {
   return parseLocalDate(dateString).toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -52,6 +58,7 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
         "Nächte",
         "Fahrzeuggröße",
         "Notizen",
+        "Status",
       ],
       ...sortedBookings.map((booking) => [
         getPlaceName(booking.place_id),
@@ -61,6 +68,7 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
         getStayLength(booking.start_date, booking.end_date),
         booking.vehicle_size || "",
         booking.notes || "",
+        getStatusLabel(booking.status),
       ]),
     ];
 
@@ -111,32 +119,34 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
         <div style={tableWrapperStyle}>
           <table style={tableStyle}>
             <thead>
-              <tr>
-                <th style={thStyle}>Von</th>
-                <th style={thStyle}>Bis</th>
-                <th style={thStyle}>Platz</th>
-                <th style={thStyle}>Gast</th>
-                <th style={thStyle}>Nächte</th>
-                <th style={thStyle}>Fahrzeug</th>
-                <th style={thStyle}>Notizen</th>
-              </tr>
+            <tr>
+              <th style={thStyle}>Von</th>
+              <th style={thStyle}>Bis</th>
+              <th style={thStyle}>Platz</th>
+              <th style={thStyle}>Gast</th>
+              <th style={thStyle}>Nächte</th>
+              <th style={thStyle}>Fahrzeug</th>
+              <th style={thStyle}>Notizen</th>
+              <th style={thStyle}>Status</th>
+            </tr>
             </thead>
 
             <tbody>
               {sortedBookings.map((booking) => (
-                <tr key={booking.id}>
-                  <td style={tdStyle}>{formatDate(booking.start_date)}</td>
-                  <td style={tdStyle}>{formatDate(booking.end_date)}</td>
-                  <td style={tdStyle}>
-                    <strong>Platz {getPlaceName(booking.place_id)}</strong>
-                  </td>
-                  <td style={tdStyle}>{booking.guest_name}</td>
-                  <td style={tdStyle}>
-                    {getStayLength(booking.start_date, booking.end_date)}
-                  </td>
-                  <td style={tdStyle}>{booking.vehicle_size || "–"}</td>
-                  <td style={tdStyle}>{booking.notes || "–"}</td>
-                </tr>
+                  <tr key={booking.id}>
+                    <td style={tdStyle}>{formatDate(booking.start_date)}</td>
+                    <td style={tdStyle}>{formatDate(booking.end_date)}</td>
+                    <td style={tdStyle}>
+                      <strong>Platz {getPlaceName(booking.place_id)}</strong>
+                    </td>
+                    <td style={tdStyle}>{booking.guest_name}</td>
+                    <td style={tdStyle}>
+                      {getStayLength(booking.start_date, booking.end_date)}
+                    </td>
+                    <td style={tdStyle}>{booking.vehicle_size || "–"}</td>
+                    <td style={tdStyle}>{booking.notes || "–"}</td>
+                    <td style={tdStyle}>{getStatusLabel(booking.status)}</td>
+                  </tr>
               ))}
             </tbody>
           </table>
