@@ -61,7 +61,29 @@ def ensure_default_users():
         db.close()
 
 
+def ensure_default_places():
+    db = SessionLocal()
+    try:
+        existing_count = db.query(models.Place).count()
+
+        if existing_count > 0:
+            return
+
+        for number in range(1, 85):
+            place = models.Place(
+                name=str(number),
+                type="Stellplatz",
+                capacity=1,
+            )
+            db.add(place)
+
+        db.commit()
+    finally:
+        db.close()
+
+
 ensure_default_users()
+ensure_default_places()
 
 
 def get_db():
