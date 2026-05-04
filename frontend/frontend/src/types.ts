@@ -13,8 +13,9 @@ export interface Booking {
   start_date: string;
   end_date: string;
   guest_name: string;
-  vehicle_size: string | null;
-  notes: string | null;
+  vehicle_size: string;
+  notes: string;
+  status?: string;
 }
 
 export type PlaceStatusColor = "green" | "yellow" | "red" | "gray";
