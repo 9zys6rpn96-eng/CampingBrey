@@ -11,6 +11,7 @@ import {
 import { PlaceList } from "./components/PlaceList.tsx";
 import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
 import { CampingMap } from "./components/CampingMap";
+import { BookingOverview } from "./components/BookingOverview";
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -483,7 +484,9 @@ function AdminApp() {
             <div style={statsOverviewValueStyle}>{statusCounts.gray}</div>
           </div>
         </section>
-
+        {hasLoadedOnce && (
+  <BookingOverview bookings={bookings} places={places} />
+)}
         {currentUser.role === "developer" && (
             <section style={cardStyle}>
               <div style={cardHeaderStyle}>
