@@ -13,7 +13,11 @@ import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
 import { CampingMap } from "./components/CampingMap";
 
 function toIsoDate(date: Date) {
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 function startOfWeek(date: Date) {
@@ -32,7 +36,14 @@ function addDays(date: Date, days: number) {
 }
 
 function formatDate(dateString: string) {
-  const date = new Date(dateString);
+  const [year, month, day] = dateString.split("-");
+
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day)
+  );
+
   return date.toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
@@ -221,12 +232,18 @@ function AdminApp() {
   }, [placeStatuses]);
 
   function handleDateChange(value: string) {
-    if (!value) return;
+  if (!value) return;
 
-    const selectedDate = new Date(value);
-    selectedDate.setHours(0, 0, 0, 0);
-    setWeekStart(selectedDate);
-  }
+  const [year, month, day] = value.split("-");
+
+  const selectedDate = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day)
+  );
+
+  setWeekStart(selectedDate);
+}
 
   function goToCurrentWeek() {
     setWeekStart(startOfWeek(new Date()));
