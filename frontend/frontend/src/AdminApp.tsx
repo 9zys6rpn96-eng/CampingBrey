@@ -484,9 +484,6 @@ function AdminApp() {
             <div style={statsOverviewValueStyle}>{statusCounts.gray}</div>
           </div>
         </section>
-        {hasLoadedOnce && (
-  <BookingOverview bookings={bookings} places={places} />
-)}
         {currentUser.role === "developer" && (
             <section style={cardStyle}>
               <div style={cardHeaderStyle}>
@@ -617,6 +614,7 @@ function AdminApp() {
                       onBookingCreated={reloadData}
                   />
                 </section>
+                <BookingOverview bookings={bookings} places={places} />
               </main>
             </div>
         )}
