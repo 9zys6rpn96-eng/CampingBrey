@@ -434,7 +434,7 @@ export function CampingMap({
           preserveAspectRatio="xMidYMid meet"
         >
           <image
-            href="/camping-map.svg"
+            href="/camping-map-v2.svg"
             x={MAP_VIEWBOX.x}
             y={MAP_VIEWBOX.y}
             width={MAP_VIEWBOX.width}
