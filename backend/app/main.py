@@ -64,12 +64,14 @@ def ensure_default_users():
 def ensure_default_places():
     db = SessionLocal()
     try:
-        existing_count = db.query(models.Place).count()
+        existing_ids = {
+            place.id for place in db.query(models.Place).all()
+        }
 
-        if existing_count > 0:
-            return
+        for number in range(1, 105):
+            if number in existing_ids:
+                continue
 
-        for number in range(1, 85):
             place = models.Place(
                 name=str(number),
                 type="Stellplatz",
