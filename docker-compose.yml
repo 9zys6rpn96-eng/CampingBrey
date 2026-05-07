@@ -9,8 +9,6 @@ services:
       POSTGRES_USER: camping
       POSTGRES_PASSWORD: camping
       POSTGRES_DB: camping
-    ports:
-      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
@@ -24,7 +22,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   frontend:
     build:
