@@ -21,15 +21,6 @@ function toIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function startOfWeek(date: Date) {
-  const result = new Date(date);
-  const day = result.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  result.setDate(result.getDate() + diff);
-  result.setHours(0, 0, 0, 0);
-  return result;
-}
-
 function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
@@ -86,7 +77,7 @@ function AdminApp() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [placeStatuses, setPlaceStatuses] = useState<PlaceStatus[]>([]);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+  const [weekStart, setWeekStart] = useState<Date>(() => new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -247,7 +238,7 @@ function AdminApp() {
 }
 
   function goToCurrentWeek() {
-    setWeekStart(startOfWeek(new Date()));
+    setWeekStart(new Date());
   }
 
   function goToPreviousDay() {

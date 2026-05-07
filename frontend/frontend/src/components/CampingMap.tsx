@@ -372,11 +372,17 @@ export function CampingMap({
     ? places.find((p) => p.id === hoveredPlaceId) ?? null
     : null;
 
+  const todayIso = new Date().toISOString().split("T")[0];
+
   const hoveredPlaceBookings = hoveredPlaceId
-  ? bookings
-      .filter((booking) => booking.place_id === hoveredPlaceId)
-      .sort((a, b) => a.start_date.localeCompare(b.start_date))
-  : [];
+    ? bookings
+        .filter(
+          (booking) =>
+            booking.place_id === hoveredPlaceId &&
+            booking.end_date > todayIso
+        )
+        .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    : [];
 
   return (
     <div>
