@@ -18,7 +18,12 @@ export interface Booking {
   status?: string;
 }
 
-export type PlaceStatusColor = "green" | "yellow" | "red" | "gray";
+export type PlaceStatusColor =
+  | "green"
+  | "yellow"
+  | "red"
+  | "gray"
+  | "blocked";
 
 export interface PlaceStatus {
   id: number;

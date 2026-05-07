@@ -98,7 +98,7 @@ function getNextWeekRange() {
   };
 }
 
-const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese"] as const;
+const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese", "Gesperrt"] as const;
 const CUSTOM_PLACE_TYPE = "__custom__";
 
 export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces }: Props) {
