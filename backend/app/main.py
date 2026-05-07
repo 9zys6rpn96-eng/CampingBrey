@@ -118,6 +118,13 @@ def require_authenticated_user(
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
     return current_user
 
+def require_operator_or_developer(
+    current_user: models.User = Depends(get_current_user),
+):
+    if current_user.role not in ["developer", "operator"]:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    return current_user
+
 
 def require_developer(
     current_user: models.User = Depends(get_current_user),
@@ -331,7 +338,7 @@ def list_places_with_status(
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_operator_or_developer),
+    current_user: models.User = Depends(require_authenticated_user),
 ):
     if start_date > end_date:
         raise HTTPException(
@@ -380,7 +387,7 @@ def update_place(
     place_id: int,
     updated: schemas.PlaceCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_authenticated_user),
+    current_user: models.User = Depends(require_operator_or_developer),
 ):
     place = db.query(models.Place).filter(models.Place.id == place_id).first()
 
