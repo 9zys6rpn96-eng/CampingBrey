@@ -216,10 +216,11 @@ function AdminApp() {
         else if (status.status === "yellow") acc.yellow += 1;
         else if (status.status === "red") acc.red += 1;
         else if (status.status === "gray") acc.gray += 1;
+        else if (status.status === "blocked") acc.blocked += 1;
 
         return acc;
       },
-      { green: 0, yellow: 0, red: 0, gray: 0 }
+      { green: 0, yellow: 0, red: 0, gray: 0, blocked: 0 }
     );
   }, [placeStatuses]);
 

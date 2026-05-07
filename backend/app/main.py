@@ -157,6 +157,19 @@ def calculate_place_status_for_range(
             "status": "gray",
         }
 
+    if place.type == "Gesperrt":
+        return {
+            "id": place.id,
+            "name": place.name,
+            "type": place.type,
+            "capacity": place.capacity,
+            "start_date": start_date,
+            "end_date": end_date,
+            "max_occupancy": 0,
+            "occupied_days": 0,
+            "fully_booked_days": 0,
+            "status": "blocked",
+        }
     total_days = (end_date - start_date).days + 1
     max_occupancy = 0
     occupied_days = 0
@@ -420,10 +433,10 @@ def create_booking(
             detail="Start date must be before end date"
         )
 
-    if place.type == "Dauercamper":
+    if place.type in ["Dauercamper", "Gesperrt"]:
         raise HTTPException(
             status_code=400,
-            detail="Dauercamper-Plätze können nicht gebucht werden"
+            detail="Dieser Platz kann nicht gebucht werden"
         )
 
         overlapping_bookings = (

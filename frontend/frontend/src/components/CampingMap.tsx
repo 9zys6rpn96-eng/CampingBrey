@@ -160,6 +160,10 @@ export function CampingMap({
       return isHovered ? "rgba(107,114,128,0.48)" : "rgba(107,114,128,0.35)";
     }
 
+    if (status.status === "blocked") {
+    return isHovered ? "rgba(124,58,237,0.50)" : "rgba(124,58,237,0.35)";
+    }
+
     if (status.status === "green") {
       return isHovered ? "rgba(34,197,94,0.40)" : "rgba(34,197,94,0.25)";
     }
@@ -188,6 +192,9 @@ export function CampingMap({
       return "#16a34a";
     }
 
+    if (status.status === "blocked") {
+      return "#7c3aed";
+    }
     if (status.status === "yellow") {
       return "#eab308";
     }
@@ -608,69 +615,79 @@ export function CampingMap({
 )}
 </div>
 
-<div style={legendStyle}>
-  <div style={legendItemStyle}>
+      <div style={legendStyle}>
+        <div style={legendItemStyle}>
     <span
-      style={{
-        ...legendDotStyle,
-        backgroundColor: "rgba(34,197,94,0.55)",
-        borderColor: "#16a34a",
-      }}
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(34,197,94,0.55)",
+          borderColor: "#16a34a",
+        }}
     />
-    Frei
-  </div>
+          Frei
+        </div>
 
-  <div style={legendItemStyle}>
+        <div style={legendItemStyle}>
     <span
-      style={{
-        ...legendDotStyle,
-        backgroundColor: "rgba(234,179,8,0.60)",
-        borderColor: "#eab308",
-      }}
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(234,179,8,0.60)",
+          borderColor: "#eab308",
+        }}
     />
-    Teilweise belegt
-  </div>
+          Teilweise belegt
+        </div>
 
-  <div style={legendItemStyle}>
+        <div style={legendItemStyle}>
     <span
-      style={{
-        ...legendDotStyle,
-        backgroundColor: "rgba(220,38,38,0.60)",
-        borderColor: "#dc2626",
-      }}
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(220,38,38,0.60)",
+          borderColor: "#dc2626",
+        }}
     />
-    Voll belegt
-  </div>
+          Voll belegt
+        </div>
 
-  <div style={legendItemStyle}>
+        <div style={legendItemStyle}>
     <span
-      style={{
-        ...legendDotStyle,
-        backgroundColor: "rgba(107,114,128,0.50)",
-        borderColor: "#6b7280",
-      }}
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(107,114,128,0.50)",
+          borderColor: "#6b7280",
+        }}
     />
-    Dauercamper
-  </div>
+          Dauercamper
+        </div>
 
-  <div style={legendItemStyle}>
+        <div style={legendItemStyle}>
     <span
-      style={{
-        ...legendDotStyle,
-        backgroundColor: "rgba(37,99,235,0.26)",
-        borderColor: "#2563eb",
-      }}
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(124,58,237,0.45)",
+          borderColor: "#7c3aed",
+        }}
     />
-    Ausgewählt
-  </div>
-</div>
+          Gesperrt
+        </div>
+        <div style={legendItemStyle}>
+    <span
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(37,99,235,0.26)",
+          borderColor: "#2563eb",
+        }}
+    />
+          Ausgewählt
+        </div>
+      </div>
 
-{isDeveloper && (
-  <div style={developerPanelStyle}>
-    <div style={developerPanelHeaderStyle}>
-      <div>
-        <h3 style={developerPanelTitleStyle}>Polygon-Werkzeug</h3>
-        <p style={developerPanelTextStyle}>
+      {isDeveloper && (
+          <div style={developerPanelStyle}>
+            <div style={developerPanelHeaderStyle}>
+              <div>
+                <h3 style={developerPanelTitleStyle}>Polygon-Werkzeug</h3>
+                <p style={developerPanelTextStyle}>
           Bearbeitungsmodus aktivieren und 4 Ecken auf der Karte anklicken.
         </p>
       </div>
