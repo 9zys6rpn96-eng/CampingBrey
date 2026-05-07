@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Place, PlaceStatus } from "../types";
+import type { Place, PlaceStatus, Booking } from "../types";
 
 interface CampingMapProps {
   places: Place[];
@@ -7,6 +7,7 @@ interface CampingMapProps {
   selectedPlaceId: number | null;
   onSelectPlace: (id: number) => void;
   isDeveloper: boolean;
+  bookings: Booking[];
 }
 
 type Point = {
@@ -30,6 +31,7 @@ export function CampingMap({
   selectedPlaceId,
   onSelectPlace,
   isDeveloper,
+  bookings,
 }: CampingMapProps) {
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState(DEFAULT_OFFSET);
@@ -68,6 +70,21 @@ export function CampingMap({
       x: e.clientX - dragStart.x,
       y: e.clientY - dragStart.y,
     });
+  }
+  function formatDate(dateString: string) {
+  const [year, month, day] = dateString.split("-");
+
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day)
+  );
+
+  return date.toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
   }
 
   function handleMouseUp() {
@@ -355,9 +372,11 @@ export function CampingMap({
     ? places.find((p) => p.id === hoveredPlaceId) ?? null
     : null;
 
-  const hoveredPlaceStatus = hoveredPlaceId
-    ? getStatusForPlace(hoveredPlaceId, placeStatuses)
-    : null;
+  const hoveredPlaceBookings = hoveredPlaceId
+  ? bookings
+      .filter((booking) => booking.place_id === hoveredPlaceId)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+  : [];
 
   return (
     <div>
@@ -540,87 +559,141 @@ export function CampingMap({
           )}
         </svg>
 
-        {!editMode && hoveredPlace && (
-          <div style={tooltipCardStyle}>
-            <div style={tooltipTitleStyle}>Platz {hoveredPlace.name}</div>
+{!editMode && hoveredPlace && (
+  <div style={tooltipCardStyle}>
+    <div style={tooltipTitleStyle}>Platz {hoveredPlace.name}</div>
 
-            <div style={tooltipMetaRowStyle}>
-              <span style={tooltipBadgeStyle}>{hoveredPlace.type || "Stellplatz"}</span>
-              <span style={tooltipBadgeStyle}>Kapazität {hoveredPlace.capacity}</span>
-            </div>
+    <div style={tooltipMetaRowStyle}>
+      <span style={tooltipBadgeStyle}>
+        {hoveredPlace.type || "Stellplatz"}
+      </span>
+      <span style={tooltipBadgeStyle}>
+        Kapazität {hoveredPlace.capacity}
+      </span>
+    </div>
 
-            {hoveredPlaceStatus?.status === "gray" ? (
-              <div style={tooltipTextStyle}>Dauercamper</div>
-            ) : (
-              <>
-                <div style={tooltipTextStyle}>
-                  Max. Belegung: <strong>{hoveredPlaceStatus?.max_occupancy ?? 0}</strong> /{" "}
-                  {hoveredPlace.capacity}
-                </div>
-                <div style={tooltipTextMutedStyle}>
-                  Tage belegt: {hoveredPlaceStatus?.occupied_days ?? 0}
-                </div>
-              </>
+    {hoveredPlaceBookings.length === 0 ? (
+      <div style={tooltipTextMutedStyle}>Keine Buchungen vorhanden.</div>
+    ) : (
+      <div style={tooltipBookingsStyle}>
+        <div style={tooltipBookingsTitleStyle}>Buchungen</div>
+
+        {hoveredPlaceBookings.slice(0, 4).map((booking) => (
+          <div key={booking.id} style={tooltipBookingItemStyle}>
+            <strong>{booking.guest_name}</strong>
+            <span>
+              {formatDate(booking.start_date)} – {formatDate(booking.end_date)}
+            </span>
+
+            {booking.status === "noshow" && (
+              <span style={tooltipNoShowStyle}>Nicht erschienen</span>
             )}
+          </div>
+        ))}
+
+        {hoveredPlaceBookings.length > 4 && (
+          <div style={tooltipMoreStyle}>
+            + {hoveredPlaceBookings.length - 4} weitere Buchung(en)
           </div>
         )}
       </div>
+    )}
+  </div>
+)}
+</div>
 
-      <div style={legendStyle}>
-        <div style={legendItemStyle}>
-          <span style={{ ...legendDotStyle, backgroundColor: "rgba(34,197,94,0.55)", borderColor: "#16a34a" }} />
-          Frei
-        </div>
-        <div style={legendItemStyle}>
-          <span style={{ ...legendDotStyle, backgroundColor: "rgba(234,179,8,0.60)", borderColor: "#eab308" }} />
-          Teilweise belegt
-        </div>
-        <div style={legendItemStyle}>
-          <span style={{ ...legendDotStyle, backgroundColor: "rgba(220,38,38,0.60)", borderColor: "#dc2626" }} />
-          Voll belegt
-        </div>
-        <div style={legendItemStyle}>
-          <span style={{ ...legendDotStyle, backgroundColor: "rgba(107,114,128,0.50)", borderColor: "#6b7280" }} />
-          Dauercamper
-        </div>
-        <div style={legendItemStyle}>
-          <span style={{ ...legendDotStyle, backgroundColor: "rgba(37,99,235,0.26)", borderColor: "#2563eb" }} />
-          Ausgewählt
-        </div>
+<div style={legendStyle}>
+  <div style={legendItemStyle}>
+    <span
+      style={{
+        ...legendDotStyle,
+        backgroundColor: "rgba(34,197,94,0.55)",
+        borderColor: "#16a34a",
+      }}
+    />
+    Frei
+  </div>
+
+  <div style={legendItemStyle}>
+    <span
+      style={{
+        ...legendDotStyle,
+        backgroundColor: "rgba(234,179,8,0.60)",
+        borderColor: "#eab308",
+      }}
+    />
+    Teilweise belegt
+  </div>
+
+  <div style={legendItemStyle}>
+    <span
+      style={{
+        ...legendDotStyle,
+        backgroundColor: "rgba(220,38,38,0.60)",
+        borderColor: "#dc2626",
+      }}
+    />
+    Voll belegt
+  </div>
+
+  <div style={legendItemStyle}>
+    <span
+      style={{
+        ...legendDotStyle,
+        backgroundColor: "rgba(107,114,128,0.50)",
+        borderColor: "#6b7280",
+      }}
+    />
+    Dauercamper
+  </div>
+
+  <div style={legendItemStyle}>
+    <span
+      style={{
+        ...legendDotStyle,
+        backgroundColor: "rgba(37,99,235,0.26)",
+        borderColor: "#2563eb",
+      }}
+    />
+    Ausgewählt
+  </div>
+</div>
+
+{isDeveloper && (
+  <div style={developerPanelStyle}>
+    <div style={developerPanelHeaderStyle}>
+      <div>
+        <h3 style={developerPanelTitleStyle}>Polygon-Werkzeug</h3>
+        <p style={developerPanelTextStyle}>
+          Bearbeitungsmodus aktivieren und 4 Ecken auf der Karte anklicken.
+        </p>
       </div>
 
-      {isDeveloper && (
-        <div style={developerPanelStyle}>
-          <div style={developerPanelHeaderStyle}>
-            <div>
-              <h3 style={developerPanelTitleStyle}>Polygon-Werkzeug</h3>
-              <p style={developerPanelTextStyle}>
-                Bearbeitungsmodus aktivieren und 4 Ecken auf der Karte anklicken.
-              </p>
-            </div>
-            <div style={developerBadgeStyle}>{polygonPoints.length} / 4 Punkte</div>
-          </div>
+      <div style={developerBadgeStyle}>
+        {polygonPoints.length} / 4 Punkte
+      </div>
+    </div>
 
-          <div style={developerCodeBoxStyle}>
-            {polygonString || "Noch keine Punkte gesetzt."}
-          </div>
+    <div style={developerCodeBoxStyle}>
+      {polygonString || "Noch keine Punkte gesetzt."}
+    </div>
 
-          {polygonPoints.length === 4 && (
-            <div style={developerResultBoxStyle}>
-              <strong>Fertiges Polygon:</strong>
-              <pre style={developerPreStyle}>
+    {polygonPoints.length === 4 && (
+      <div style={developerResultBoxStyle}>
+        <strong>Fertiges Polygon:</strong>
+        <pre style={developerPreStyle}>
 {`<polygon
   points="${polygonString}"
   fill="rgba(34,197,94,0.25)"
   stroke="#16a34a"
   onClick={() => onSelectPlace(PLATZ_ID)}
 />`}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        </pre>
+      </div>
+    )}
+  </div>
+)}
+</div>
   );
 }
 
@@ -739,11 +812,6 @@ const tooltipBadgeStyle: React.CSSProperties = {
   color: "#166534",
 };
 
-const tooltipTextStyle: React.CSSProperties = {
-  fontSize: "0.85rem",
-  color: "#163126",
-};
-
 const tooltipTextMutedStyle: React.CSSProperties = {
   fontSize: "0.8rem",
   color: "#6b7280",
@@ -843,4 +911,45 @@ const developerPreStyle: React.CSSProperties = {
   fontFamily: "monospace",
   whiteSpace: "pre-wrap",
   color: "#163126",
+};
+
+const tooltipBookingsStyle: React.CSSProperties = {
+  marginTop: "0.75rem",
+  paddingTop: "0.65rem",
+  borderTop: "1px solid #e5e7eb",
+};
+
+const tooltipBookingsTitleStyle: React.CSSProperties = {
+  fontSize: "0.8rem",
+  fontWeight: 800,
+  color: "#374151",
+  marginBottom: "0.45rem",
+};
+
+const tooltipBookingItemStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.15rem",
+  padding: "0.45rem 0",
+  fontSize: "0.82rem",
+  color: "#374151",
+};
+
+const tooltipNoShowStyle: React.CSSProperties = {
+  display: "inline-flex",
+  width: "fit-content",
+  marginTop: "0.2rem",
+  padding: "0.18rem 0.45rem",
+  borderRadius: "999px",
+  backgroundColor: "#fef3c7",
+  color: "#92400e",
+  fontSize: "0.75rem",
+  fontWeight: 700,
+};
+
+const tooltipMoreStyle: React.CSSProperties = {
+  marginTop: "0.35rem",
+  fontSize: "0.8rem",
+  color: "#6b7280",
+  fontWeight: 700,
 };

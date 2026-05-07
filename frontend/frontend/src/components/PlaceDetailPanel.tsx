@@ -8,6 +8,7 @@ interface Props {
   place: Place | null;
   bookings: Booking[];
   onBookingCreated: () => void | Promise<void>;
+  canEditPlaces: boolean;
 }
 
 function formatDate(dateString: string) {
@@ -100,7 +101,7 @@ function getNextWeekRange() {
 const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese"] as const;
 const CUSTOM_PLACE_TYPE = "__custom__";
 
-export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
+export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces }: Props) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -309,7 +310,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
           </div>
         </div>
       </section>
-
+    {canEditPlaces && (
       <section style={panelStyle}>
         <div style={sectionHeaderStyle}>
           <div>
@@ -382,7 +383,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated }: Props) {
           </div>
         </div>
       </section>
-
+)}
       <section style={panelStyle}>
         <div style={sectionHeaderStyle}>
           <div>

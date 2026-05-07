@@ -490,7 +490,7 @@ function AdminApp() {
                 <div>
                   <h2 style={cardTitleStyle}>Benutzerverwaltung</h2>
                   <p style={cardSubtitleStyle}>
-                    Neuen Operator oder Developer für die Anwendung anlegen.
+                    Neuen Operator, Developer oder User für die Anwendung anlegen.
                   </p>
                 </div>
               </div>
@@ -523,6 +523,7 @@ function AdminApp() {
                       style={inputStyle}
                   >
                     <option value="operator">Operator</option>
+                    <option value="user">User</option>
                     <option value="developer">Developer</option>
                   </select>
                 </div>
@@ -590,11 +591,12 @@ function AdminApp() {
                   </div>
 
                   <CampingMap
-                      places={places}
-                      placeStatuses={placeStatuses}
-                      selectedPlaceId={selectedPlaceId}
-                      onSelectPlace={handleSelectPlace}
-                      isDeveloper={currentUser.role === "developer"}
+                    places={places}
+                    placeStatuses={placeStatuses}
+                    bookings={bookings}
+                    selectedPlaceId={selectedPlaceId}
+                    onSelectPlace={handleSelectPlace}
+                    isDeveloper={currentUser.role === "developer"}
                   />
                 </section>
 
@@ -609,9 +611,12 @@ function AdminApp() {
                   </div>
 
                   <PlaceDetailPanel
-                      place={selectedPlace}
-                      bookings={bookingsForSelectedPlace}
-                      onBookingCreated={reloadData}
+                    place={selectedPlace}
+                    bookings={bookingsForSelectedPlace}
+                    onBookingCreated={reloadData}
+                    canEditPlaces={
+                      currentUser.role === "developer" || currentUser.role === "operator"
+                    }
                   />
                 </section>
                 <BookingOverview bookings={bookings} places={places} />

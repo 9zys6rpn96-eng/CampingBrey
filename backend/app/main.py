@@ -111,10 +111,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
-def require_operator_or_developer(
+def require_authenticated_user(
     current_user: models.User = Depends(get_current_user),
 ):
-    if current_user.role not in ["developer", "operator"]:
+    if current_user.role not in ["developer", "operator", "user"]:
         raise HTTPException(status_code=403, detail="Keine Berechtigung")
     return current_user
 
@@ -251,7 +251,7 @@ def create_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_developer),
 ):
-    if user_data.role not in ["developer", "operator"]:
+    if user_data.role not in ["developer", "operator", "user"]:
         raise HTTPException(status_code=400, detail="Ungültige Rolle")
 
     existing_user = (
@@ -320,7 +320,7 @@ def create_places_bulk(
 @app.get("/places", response_model=list[schemas.PlaceRead])
 def list_places(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_operator_or_developer),
+    current_user: models.User = Depends(require_authenticated_user),
 ):
     places = db.query(models.Place).all()
     return places
@@ -380,7 +380,7 @@ def update_place(
     place_id: int,
     updated: schemas.PlaceCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_operator_or_developer),
+    current_user: models.User = Depends(require_authenticated_user),
 ):
     place = db.query(models.Place).filter(models.Place.id == place_id).first()
 
@@ -401,7 +401,7 @@ def update_place(
 def create_booking(
     booking: schemas.BookingCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_operator_or_developer),
+    current_user: models.User = Depends(require_authenticated_user),
 ):
     place = db.query(models.Place).filter(models.Place.id == booking.place_id).first()
     if place is None:
@@ -457,7 +457,7 @@ def create_booking(
 @app.get("/bookings", response_model=list[schemas.BookingRead])
 def list_bookings(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_operator_or_developer),
+    current_user: models.User = Depends(require_authenticated_user),
 ):
     bookings = db.query(models.Booking).all()
     return bookings
@@ -467,7 +467,7 @@ def list_bookings(
 def delete_booking(
     booking_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_operator_or_developer),
+    current_user: models.User = Depends(require_authenticated_user),
 ):
     booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
 
