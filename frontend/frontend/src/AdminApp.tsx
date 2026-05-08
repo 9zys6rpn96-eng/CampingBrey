@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Place, Booking, PlaceStatus } from "./types";
+import type { Place, Booking, PlaceStatus, User } from "./types";
 import {
   fetchPlaces,
   fetchBookings,
@@ -8,6 +8,7 @@ import {
   fetchMe,
   createUser,
   fetchAvailablePlaces,
+  fetchUsers,
 } from "./services/api";
 import { PlaceList } from "./components/PlaceList.tsx";
 import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
@@ -109,6 +110,9 @@ function AdminApp() {
   const weekEndIso = useMemo(() => toIsoDate(addDays(weekStart, 6)), [weekStart]);
   const selectedDateIso = weekStartIso;
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadCurrentUser() {
@@ -212,6 +216,10 @@ function AdminApp() {
   }
 
   const selectedPlace = places.find((p) => p.id === selectedPlaceId) ?? null;
+
+  const availablePlaceIds = availablePlaces.map((place) => place.id);
+  const availabilityMode = availablePlaces.length > 0;
+
   const bookingsForSelectedPlace =
     selectedPlaceId !== null
       ? bookings.filter((b) => b.place_id === selectedPlaceId)
@@ -283,6 +291,11 @@ function AdminApp() {
     setAvailabilityError(err.message || "Fehler bei der Verfügbarkeitssuche");
   }
 }
+  function clearAvailabilitySearch() {
+  setAvailablePlaces([]);
+  setAvailabilityError(null);
+  setVehicleLengthM("");
+}
 
   async function handleLogin() {
     try {
@@ -318,25 +331,46 @@ function AdminApp() {
     setUserCreateError(null);
   }
 
-  async function handleCreateUser() {
-    try {
-      setUserCreateSuccess(null);
-      setUserCreateError(null);
+  async function loadUsers() {
+  if (currentUser?.role !== "developer") return;
 
-      const createdUser = await createUser({
-        username: newUsername,
-        password: newPassword,
-        role: newUserRole,
-      });
-
-      setUserCreateSuccess(`Benutzer "${createdUser.username}" wurde erstellt.`);
-      setNewUsername("");
-      setNewPassword("");
-      setNewUserRole("operator");
-    } catch (err: any) {
-      setUserCreateError(err.message || "Fehler beim Erstellen des Benutzers");
-    }
+  try {
+    setUsersError(null);
+    const usersData = await fetchUsers();
+    setUsers(usersData);
+  } catch (err: any) {
+    setUsersError(err.message || "Fehler beim Laden der Benutzer");
   }
+}
+
+  useEffect(() => {
+  if (currentUser?.role === "developer") {
+    loadUsers();
+  }
+}, [currentUser]);
+
+  async function handleCreateUser() {
+  try {
+    setUserCreateSuccess(null);
+    setUserCreateError(null);
+
+    const createdUser = await createUser({
+      username: newUsername,
+      password: newPassword,
+      role: newUserRole,
+    });
+
+    setUserCreateSuccess(`Benutzer "${createdUser.username}" wurde erstellt.`);
+    setNewUsername("");
+    setNewPassword("");
+    setNewUserRole("operator");
+
+    await loadUsers();
+
+  } catch (err: any) {
+    setUserCreateError(err.message || "Fehler beim Erstellen des Benutzers");
+  }
+}
 
   function handleSelectPlace(placeId: number) {
     setSelectedPlaceId((prev) => (prev === placeId ? null : placeId));
@@ -527,17 +561,23 @@ function AdminApp() {
               <button onClick={handleAvailabilitySearch} style={primaryButtonStyle}>
                 Freie Plätze anzeigen
               </button>
+
+              <button
+                  onClick={clearAvailabilitySearch}
+                  style={secondaryButtonStyle}
+              >
+                Suche zurücksetzen
+              </button>
             </div>
           </div>
 
           {availabilityError && <div style={errorBoxStyle}>{availabilityError}</div>}
 
           {availablePlaces.length > 0 && (
-              <div style={{marginTop: "1rem", color: colors.text}}>
-                <strong>Freie passende Plätze:</strong>{" "}
-                {availablePlaces.map((p) => p.name).join(", ")}
+              <div style={successBoxStyle}>
+                {availablePlaces.length} passende freie Plätze gefunden. Nicht passende Plätze sind auf der Karte abgedunkelt.
               </div>
-          )}
+            )}
         </section>
 
         <section style={statsOverviewGridStyle}>
@@ -560,73 +600,12 @@ function AdminApp() {
             <div style={statsOverviewLabelStyle}>⚫ Dauercamper</div>
             <div style={statsOverviewValueStyle}>{statusCounts.gray}</div>
           </div>
+
+          <div style={statsOverviewCardStyle}>
+            <div style={statsOverviewLabelStyle}>🟣 Gesperrt</div>
+            <div style={statsOverviewValueStyle}>{statusCounts.blocked}</div>
+          </div>
         </section>
-        {currentUser.role === "developer" && (
-            <section style={cardStyle}>
-              <div style={cardHeaderStyle}>
-                <div>
-                  <h2 style={cardTitleStyle}>Benutzerverwaltung</h2>
-                  <p style={cardSubtitleStyle}>
-                    Neuen Operator, Developer oder User für die Anwendung anlegen.
-                  </p>
-                </div>
-              </div>
-
-              <div style={formRowStyle}>
-                <div style={fieldBlockStyle}>
-                  <label style={labelStyle}>Benutzername</label>
-                  <input
-                      value={newUsername}
-                      onChange={(e) => setNewUsername(e.target.value)}
-                      style={inputStyle}
-                  />
-                </div>
-
-                <div style={fieldBlockStyle}>
-                  <label style={labelStyle}>Passwort</label>
-                  <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      style={inputStyle}
-                  />
-                </div>
-
-                <div style={fieldBlockStyleNarrow}>
-                  <label style={labelStyle}>Rolle</label>
-                  <select
-                      value={newUserRole}
-                      onChange={(e) => setNewUserRole(e.target.value)}
-                      style={inputStyle}
-                  >
-                    <option value="operator">Operator</option>
-                    <option value="user">User</option>
-                    <option value="developer">Developer</option>
-                  </select>
-                </div>
-
-                <div style={actionFieldStyle}>
-                  <button
-                      onClick={handleCreateUser}
-                      disabled={!newUsername.trim() || !newPassword.trim()}
-                      style={{
-                        ...primaryButtonStyle,
-                        opacity: !newUsername.trim() || !newPassword.trim() ? 0.6 : 1,
-                        cursor:
-                            !newUsername.trim() || !newPassword.trim()
-                                ? "not-allowed"
-                                : "pointer",
-                      }}
-                  >
-                    Benutzer anlegen
-                  </button>
-                </div>
-              </div>
-
-              {userCreateSuccess && <div style={successBoxStyle}>{userCreateSuccess}</div>}
-              {userCreateError && <div style={errorBoxStyle}>{userCreateError}</div>}
-            </section>
-        )}
 
         {loading && !hasLoadedOnce && (
             <div style={loadingCardStyle}>Lade Daten...</div>
@@ -674,6 +653,8 @@ function AdminApp() {
                       selectedPlaceId={selectedPlaceId}
                       onSelectPlace={handleSelectPlace}
                       isDeveloper={currentUser.role === "developer"}
+                      availablePlaceIds={availablePlaceIds}
+                      availabilityMode={availabilityMode}
                   />
                 </section>
 
@@ -699,6 +680,104 @@ function AdminApp() {
                 <BookingOverview bookings={bookings} places={places}/>
               </main>
             </div>
+        )}
+                {currentUser.role === "developer" && (
+          <section style={{ ...cardStyle, marginTop: "1rem" }}>
+            <div style={cardHeaderStyle}>
+              <div>
+                <h2 style={cardTitleStyle}>Benutzerübersicht</h2>
+                <p style={cardSubtitleStyle}>
+                  Alle vorhandenen Benutzerkonten und Rollen.
+                </p>
+              </div>
+            </div>
+
+            {usersError && <div style={errorBoxStyle}>{usersError}</div>}
+
+            <div style={{ display: "grid", gap: "0.6rem", marginBottom: "1.5rem" }}>
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "1rem",
+                    padding: "0.75rem 0.9rem",
+                    borderRadius: "0.75rem",
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: "#ffffff",
+                  }}
+                >
+                  <strong>{user.username}</strong>
+                  <span style={userBadgeStyle}>{user.role}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={cardHeaderStyle}>
+              <div>
+                <h2 style={cardTitleStyle}>Benutzer anlegen</h2>
+                <p style={cardSubtitleStyle}>
+                  Neuen Operator, Developer oder User für die Anwendung anlegen.
+                </p>
+              </div>
+            </div>
+
+            <div style={formRowStyle}>
+              <div style={fieldBlockStyle}>
+                <label style={labelStyle}>Benutzername</label>
+                <input
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div style={fieldBlockStyle}>
+                <label style={labelStyle}>Passwort</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div style={fieldBlockStyleNarrow}>
+                <label style={labelStyle}>Rolle</label>
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="operator">Operator</option>
+                  <option value="user">User</option>
+                  <option value="developer">Developer</option>
+                </select>
+              </div>
+
+              <div style={actionFieldStyle}>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={!newUsername.trim() || !newPassword.trim()}
+                  style={{
+                    ...primaryButtonStyle,
+                    opacity: !newUsername.trim() || !newPassword.trim() ? 0.6 : 1,
+                    cursor:
+                      !newUsername.trim() || !newPassword.trim()
+                        ? "not-allowed"
+                        : "pointer",
+                  }}
+                >
+                  Benutzer anlegen
+                </button>
+              </div>
+            </div>
+
+            {userCreateSuccess && <div style={successBoxStyle}>{userCreateSuccess}</div>}
+            {userCreateError && <div style={errorBoxStyle}>{userCreateError}</div>}
+          </section>
         )}
       </div>
     </div>

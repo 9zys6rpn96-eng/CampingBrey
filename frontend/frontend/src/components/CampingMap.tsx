@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Place, PlaceStatus, Booking } from "../types";
+console.log("CampingMap Datei geladen");
 
 interface CampingMapProps {
   places: Place[];
@@ -8,6 +9,8 @@ interface CampingMapProps {
   onSelectPlace: (id: number) => void;
   isDeveloper: boolean;
   bookings: Booking[];
+  availablePlaceIds?: number[];
+  availabilityMode?: boolean;
 }
 
 type Point = {
@@ -32,7 +35,11 @@ export function CampingMap({
   onSelectPlace,
   isDeveloper,
   bookings,
+  availablePlaceIds = [],
+  availabilityMode = false,
 }: CampingMapProps) {
+  console.log("CampingMap availabilityMode:", availabilityMode);
+  console.log("CampingMap availablePlaceIds:", availablePlaceIds);
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState(DEFAULT_OFFSET);
   const [isDragging, setIsDragging] = useState(false);
@@ -95,7 +102,45 @@ export function CampingMap({
     setScale(DEFAULT_SCALE);
     setOffset(DEFAULT_OFFSET);
   }
+  function zoomToPlace(placeId: number) {
+  if (!containerRef.current) return;
 
+  const selectedMapPlace = mapPlaces.find(
+    (place) => place.id === placeId && place.points.trim() !== ""
+  );
+
+  if (!selectedMapPlace) return;
+
+  const center = getCenter(selectedMapPlace.points);
+
+  const containerWidth = containerRef.current.clientWidth;
+  const containerHeight = containerRef.current.clientHeight;
+
+  const fitScale = Math.min(
+    containerWidth / MAP_VIEWBOX.width,
+    containerHeight / MAP_VIEWBOX.height
+  );
+
+  const renderedMapWidth = MAP_VIEWBOX.width * fitScale;
+  const renderedMapHeight = MAP_VIEWBOX.height * fitScale;
+
+  const leftPadding = (containerWidth - renderedMapWidth) / 2;
+  const topPadding = (containerHeight - renderedMapHeight) / 2;
+
+  const pointX = leftPadding + center.x * fitScale;
+  const pointY = topPadding + center.y * fitScale;
+
+  const targetScale = 3.8;
+
+  const containerCenterX = containerWidth / 2;
+  const containerCenterY = containerHeight / 2;
+
+  setScale(targetScale);
+  setOffset({
+    x: targetScale * (containerCenterX - pointX),
+    y: targetScale * (containerCenterY - pointY),
+  });
+}
   function clearPolygon() {
     setPolygonPoints([]);
   }
@@ -325,55 +370,6 @@ export function CampingMap({
     };
   }, []);
 
-  useEffect(() => {
-    if (editMode) return;
-
-    if (selectedPlaceId === null) {
-      resetView();
-      return;
-    }
-
-    if (!containerRef.current) return;
-
-    const selectedMapPlace = mapPlaces.find(
-      (place) => place.id === selectedPlaceId && place.points.trim() !== ""
-    );
-
-    if (!selectedMapPlace) {
-      resetView();
-      return;
-    }
-
-    const center = getCenter(selectedMapPlace.points);
-
-    const containerWidth = containerRef.current.clientWidth;
-    const containerHeight = containerRef.current.clientHeight;
-
-    const fitScale = Math.min(
-      containerWidth / MAP_VIEWBOX.width,
-      containerHeight / MAP_VIEWBOX.height
-    );
-
-    const renderedMapWidth = MAP_VIEWBOX.width * fitScale;
-    const renderedMapHeight = MAP_VIEWBOX.height * fitScale;
-
-    const leftPadding = (containerWidth - renderedMapWidth) / 2;
-    const topPadding = (containerHeight - renderedMapHeight) / 2;
-
-    const pointX = leftPadding + center.x * fitScale;
-    const pointY = topPadding + center.y * fitScale;
-
-    const targetScale = 3.8;
-
-    const containerCenterX = containerWidth / 2;
-    const containerCenterY = containerHeight / 2;
-
-    setScale(targetScale);
-    setOffset({
-      x: targetScale * (containerCenterX - pointX),
-      y: targetScale * (containerCenterY - pointY),
-    });
-  }, [selectedPlaceId, editMode]);
 
   const hoveredPlace = hoveredPlaceId
     ? places.find((p) => p.id === hoveredPlaceId) ?? null
@@ -482,90 +478,117 @@ export function CampingMap({
               const placeStatus = getStatusForPlace(place.id, placeStatuses);
               const isSelected = selectedPlaceId === place.id;
               const isHovered = hoveredPlaceId === place.id;
+              const visiblePlaceName = placeData?.name ?? place.label;
+              const isAvailableForSearch = availablePlaceIds.includes(place.id);
 
-              const fillColor = getPlaceFillColor(placeStatus, isHovered, isSelected);
-              const strokeColor = getPlaceStrokeColor(placeStatus, isSelected, isHovered);
+              const isBlockedByStatus =
+                placeStatus?.status === "gray" ||
+                placeStatus?.status === "blocked";
+
+              const isUnavailableForSearch =
+                availabilityMode &&
+                (isBlockedByStatus || !isAvailableForSearch);
+              const fillColor = isUnavailableForSearch
+                ? "rgba(31,41,55,0.45)"
+                : getPlaceFillColor(placeStatus, isHovered, isSelected);
+
+              const strokeColor = isUnavailableForSearch
+                ? "#1f2937"
+                : getPlaceStrokeColor(placeStatus, isSelected, isHovered);
+
               const strokeWidth = isSelected ? 18 : isHovered ? 15 : 12;
-
               return (
-                <g key={place.id}>
-                  <polygon
-                    points={place.points}
-                    fill={fillColor}
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    onClick={(e) => {
-                      if (editMode) return;
-                      e.stopPropagation();
-                      onSelectPlace(place.id);
-                    }}
-                    onMouseEnter={() => {
-                      if (!editMode) setHoveredPlaceId(place.id);
-                    }}
-                    onMouseLeave={() => {
-                      if (!editMode) setHoveredPlaceId(null);
-                    }}
-                    style={{
-                      cursor: editMode ? "crosshair" : "pointer",
-                      transition:
-                        "fill 0.14s ease, stroke 0.14s ease, stroke-width 0.14s ease, opacity 0.14s ease",
-                      filter: isSelected
-                        ? "drop-shadow(0 0 10px rgba(37,99,235,0.35))"
-                        : isHovered
-                        ? "drop-shadow(0 0 8px rgba(0,0,0,0.12))"
-                        : "none",
-                    }}
-                  />
+                  <g key={place.id}>
+                    <polygon
+                        points={place.points}
+                        fill={fillColor}
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        onClick={(e) => {
+                          if (editMode) return;
+                          if (isUnavailableForSearch) return;
 
-                  <text
-                    x={center.x}
-                    y={center.y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize="80"
-                    fill="#111827"
-                    style={{
-                      pointerEvents: "none",
-                      userSelect: "none",
-                      fontWeight: isSelected ? 800 : 700,
-                    }}
-                  >
-                    {placeData?.name || place.id}
-                  </text>
-                </g>
+                          e.stopPropagation();
+                          onSelectPlace(place.id);
+                        }}
+                        onDoubleClick={(e) => {
+                          if (editMode) return;
+                          if (isUnavailableForSearch) return;
+
+                          e.stopPropagation();
+                          zoomToPlace(place.id);
+                        }}
+                        onMouseEnter={() => {
+                          if (!editMode && !isUnavailableForSearch) setHoveredPlaceId(place.id);
+                        }}
+                        onMouseLeave={() => {
+                          if (!editMode) setHoveredPlaceId(null);
+                        }}
+                        style={{
+                          cursor: editMode
+                              ? "crosshair"
+                              : isUnavailableForSearch
+                                  ? "not-allowed"
+                                  : "pointer",
+                          transition:
+                              "fill 0.14s ease, stroke 0.14s ease, stroke-width 0.14s ease, opacity 0.14s ease",
+                          filter: isSelected
+                              ? "drop-shadow(0 0 10px rgba(37,99,235,0.35))"
+                              : isHovered
+                                  ? "drop-shadow(0 0 8px rgba(0,0,0,0.12))"
+                                  : "none",
+                        }}
+                    />
+
+                    <text
+                        x={center.x}
+                        y={center.y}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize="80"
+                        fill="#111827"
+                        style={{
+                          pointerEvents: "none",
+                          userSelect: "none",
+                          fontWeight: isSelected ? 800 : 700,
+                        }}
+                    >
+                      {visiblePlaceName}
+                    </text>
+                  </g>
               );
             })}
 
           {editMode && polygonPoints.length > 0 && (
-            <>
-              {polygonPoints.map((point, index) => (
-                <circle
-                  key={`${point.x}-${point.y}-${index}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r="18"
-                  fill="#2563eb"
-                  stroke="white"
-                  strokeWidth="6"
-                />
-              ))}
+              <>
+                {polygonPoints.map((point, index) => (
+                    <circle
+                        key={`${point.x}-${point.y}-${index}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r="18"
+                        fill="#2563eb"
+                        stroke="white"
+                        strokeWidth="6"
+                    />
+                ))}
 
-              {polygonPoints.length >= 2 && (
-                <polyline
-                  points={polygonString}
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="18"
-                  strokeDasharray="40 25"
-                />
-              )}
+                {polygonPoints.length >= 2 && (
+                    <polyline
+                        points={polygonString}
+                        fill="none"
+                        stroke="#2563eb"
+                        strokeWidth="18"
+                        strokeDasharray="40 25"
+                    />
+                )}
 
-              {polygonPoints.length === 4 && (
-                <polygon
-                  points={polygonString}
-                  fill="rgba(37, 99, 235, 0.20)"
-                  stroke="#2563eb"
-                  strokeWidth="18"
+                {polygonPoints.length === 4 && (
+                    <polygon
+                        points={polygonString}
+                        fill="rgba(37, 99, 235, 0.20)"
+                        stroke="#2563eb"
+                        strokeWidth="18"
                 />
               )}
             </>
@@ -657,10 +680,10 @@ export function CampingMap({
           borderColor: "#6b7280",
         }}
     />
-          Dauercamper
-        </div>
+            Dauercamper
+          </div>
 
-        <div style={legendItemStyle}>
+          <div style={legendItemStyle}>
     <span
         style={{
           ...legendDotStyle,
@@ -668,9 +691,21 @@ export function CampingMap({
           borderColor: "#7c3aed",
         }}
     />
-          Gesperrt
-        </div>
-        <div style={legendItemStyle}>
+            Gesperrt
+          </div>
+
+          <div style={legendItemStyle}>
+    <span
+        style={{
+          ...legendDotStyle,
+          backgroundColor: "rgba(59,130,246,0.45)",
+          borderColor: "#2563eb",
+        }}
+    />
+            Passend zur Suche
+          </div>
+
+          <div style={legendItemStyle}>
     <span
         style={{
           ...legendDotStyle,
@@ -678,8 +713,8 @@ export function CampingMap({
           borderColor: "#2563eb",
         }}
     />
-          Ausgewählt
-        </div>
+            Ausgewählt
+          </div>
       </div>
 
       {isDeveloper && (

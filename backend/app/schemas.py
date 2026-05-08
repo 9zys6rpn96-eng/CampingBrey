@@ -68,3 +68,11 @@ class UserCreatedResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UserRead(BaseModel):
+    id: int
+    username: str
+    role: str
+
+    class Config:
+        from_attributes = True

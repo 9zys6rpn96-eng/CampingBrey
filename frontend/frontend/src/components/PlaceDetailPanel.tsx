@@ -256,47 +256,75 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   function cancelDeleteBooking() {
     setBookingToDelete(null);
   }
+  const isBlockedPlace = currentPlace.type === "Gesperrt";
+  const isPermanentPlace = currentPlace.type === "Dauercamper";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <section style={heroSectionStyle}>
-        <div style={heroLeftStyle}>
-          <div style={eyebrowStyle}>Ausgewählter Platz</div>
-          <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
-          <div style={metaRowStyle}>
-            <span style={metaBadgeStyle}>{currentPlace.type || "Stellplatz"}</span>
-            <span style={metaBadgeStyle}>Kapazität {currentPlace.capacity}</span>
-          </div>
-        </div>
+        <section style={heroSectionStyle}>
+            <div style={heroLeftStyle}>
+                <div style={eyebrowStyle}>Ausgewählter Platz</div>
+                <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
+                <div style={metaRowStyle}>
+                    <span style={metaBadgeStyle}>{currentPlace.type || "Stellplatz"}</span>
+                    <span style={metaBadgeStyle}>Kapazität {currentPlace.capacity}</span>
+                </div>
+            </div>
 
-        <div
-          style={{
-            ...statusPillStyle,
-            backgroundColor: isCurrentlyBooked ? "#fee2e2" : "#dcfce7",
-            color: isCurrentlyBooked ? "#991b1b" : "#166534",
-            borderColor: isCurrentlyBooked ? "#fecaca" : "#bbf7d0",
-          }}
-        >
-          {isCurrentlyBooked ? "🔴 Aktuell belegt" : "🟢 Aktuell frei"}
-        </div>
-      </section>
+            <div
+                style={{
+                    ...statusPillStyle,
+                    backgroundColor: isBlockedPlace
+                        ? "#fef3c7"
+                        : isPermanentPlace
+                            ? "#e5e7eb"
+                            : isCurrentlyBooked
+                                ? "#fee2e2"
+                                : "#dcfce7",
 
-      <section style={statsGridStyle}>
-        <div style={statCardStyle}>
-          <div style={statLabelStyle}>Aktuelle Belegung</div>
-          <div style={statValueStyle}>
-            {currentOccupancy} / {currentPlace.capacity}
-          </div>
-          <div style={statHelpStyle}>gleichzeitig belegte Einheiten heute</div>
-        </div>
+                    color: isBlockedPlace
+                        ? "#92400e"
+                        : isPermanentPlace
+                            ? "#374151"
+                            : isCurrentlyBooked
+                                ? "#991b1b"
+                                : "#166534",
 
-        <div style={statCardStyle}>
-          <div style={statLabelStyle}>Gebucht ab</div>
-          <div style={statValueStyleSmall}>
-            {nextBooking ? formatDate(nextBooking.start_date) : "—"}
-          </div>
-          <div style={statHelpStyle}>
-            {nextBooking ? "nächster Belegungsbeginn" : "keine zukünftige Buchung"}
+                    borderColor: isBlockedPlace
+                        ? "#fde68a"
+                        : isPermanentPlace
+                            ? "#d1d5db"
+                            : isCurrentlyBooked
+                                ? "#fecaca"
+                                : "#bbf7d0",
+                }}
+            >
+                {isBlockedPlace
+                    ? "🚧 Gesperrt"
+                    : isPermanentPlace
+                        ? "⚫ Dauercamper"
+                        : isCurrentlyBooked
+                            ? "🔴 Aktuell belegt"
+                            : "🟢 Aktuell frei"}
+            </div>
+        </section>
+
+        <section style={statsGridStyle}>
+            <div style={statCardStyle}>
+                <div style={statLabelStyle}>Aktuelle Belegung</div>
+                <div style={statValueStyle}>
+                    {currentOccupancy} / {currentPlace.capacity}
+                </div>
+                <div style={statHelpStyle}>gleichzeitig belegte Einheiten heute</div>
+            </div>
+
+            <div style={statCardStyle}>
+                <div style={statLabelStyle}>Gebucht ab</div>
+                <div style={statValueStyleSmall}>
+                    {nextBooking ? formatDate(nextBooking.start_date) : "—"}
+                </div>
+                <div style={statHelpStyle}>
+                    {nextBooking ? "nächster Belegungsbeginn" : "keine zukünftige Buchung"}
           </div>
         </div>
 

@@ -295,6 +295,14 @@ def create_user(
 
     return new_user
 
+@app.get("/users", response_model=list[schemas.UserRead])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_developer),
+):
+    users = db.query(models.User).order_by(models.User.username.asc()).all()
+    return users
+
 @app.post("/places", response_model=schemas.PlaceRead)
 def create_place(
     place: schemas.PlaceCreate,

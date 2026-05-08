@@ -1,4 +1,4 @@
-import type { Place, Booking, PlaceStatus } from "../types";
+import type { Place, Booking, PlaceStatus, User } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -201,4 +201,8 @@ export async function createUser(data: {
   }
 
   return res.json();
+}
+
+export async function fetchUsers(): Promise<User[]> {
+  return apiGet<User[]>("/users");
 }

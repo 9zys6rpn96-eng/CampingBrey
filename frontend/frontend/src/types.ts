@@ -37,3 +37,9 @@ export interface PlaceStatus {
   fully_booked_days: number;
   status: PlaceStatusColor;
 }
+
+export interface User {
+  id: number;
+  username: string;
+  role: string;
+}
