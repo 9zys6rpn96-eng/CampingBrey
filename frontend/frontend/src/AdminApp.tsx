@@ -698,7 +698,71 @@ function AdminApp() {
             </div>
         )}
                 {currentUser.role === "developer" && (
-          <section style={{ ...cardStyle, marginTop: "1rem" }}>
+        <section style={{ ...cardStyle, marginTop: "1rem" }}>
+          <div style={cardHeaderStyle}>
+            <div>
+              <h2 style={cardTitleStyle}>Benutzer anlegen</h2>
+              <p style={cardSubtitleStyle}>
+                Neuen Operator, Developer oder User für die Anwendung anlegen.
+              </p>
+            </div>
+          </div>
+
+          <div style={formRowStyle}>
+            <div style={fieldBlockStyle}>
+              <label style={labelStyle}>Benutzername</label>
+              <input
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldBlockStyle}>
+              <label style={labelStyle}>Passwort</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldBlockStyleNarrow}>
+              <label style={labelStyle}>Rolle</label>
+              <select
+                value={newUserRole}
+                onChange={(e) => setNewUserRole(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="operator">Operator</option>
+                <option value="user">User</option>
+                <option value="developer">Developer</option>
+              </select>
+            </div>
+
+            <div style={actionFieldStyle}>
+              <button
+                onClick={handleCreateUser}
+                disabled={!newUsername.trim() || !newPassword.trim()}
+                style={{
+                  ...primaryButtonStyle,
+                  opacity: !newUsername.trim() || !newPassword.trim() ? 0.6 : 1,
+                  cursor:
+                    !newUsername.trim() || !newPassword.trim()
+                      ? "not-allowed"
+                      : "pointer",
+                }}
+              >
+                Benutzer anlegen
+              </button>
+            </div>
+          </div>
+
+          {userCreateSuccess && <div style={successBoxStyle}>{userCreateSuccess}</div>}
+          {userCreateError && <div style={errorBoxStyle}>{userCreateError}</div>}
+
+          <div style={{ marginTop: "2rem" }}>
             <div style={cardHeaderStyle}>
               <div>
                 <h2 style={cardTitleStyle}>Benutzerübersicht</h2>
@@ -712,111 +776,48 @@ function AdminApp() {
 
             <div style={{ display: "grid", gap: "0.6rem", marginBottom: "1.5rem" }}>
               {users.map((user) => (
-                  <div
-                      key={user.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: "1rem",
-                        padding: "0.75rem 0.9rem",
-                        borderRadius: "0.75rem",
-                        border: `1px solid ${colors.border}`,
-                        backgroundColor: "#ffffff",
-                      }}
-                  >
-                    <div style={{display: "flex", alignItems: "center", gap: "1rem"}}>
-                      <strong>{user.username}</strong>
-                      <span style={userBadgeStyle}>{user.role}</span>
-
-                      <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          style={{
-                            padding: "0.45rem 0.7rem",
-                            borderRadius: "0.6rem",
-                            border: "1px solid #fecaca",
-                            backgroundColor: "#fee2e2",
-                            color: "#991b1b",
-                            cursor: "pointer",
-                            fontWeight: 700,
-                          }}
-                      >
-                        Löschen
-                      </button>
-                    </div>
-                  </div>
-              ))}
-            </div>
-
-            <div style={cardHeaderStyle}>
-              <div>
-                <h2 style={cardTitleStyle}>Benutzer anlegen</h2>
-                <p style={cardSubtitleStyle}>
-                  Neuen Operator, Developer oder User für die Anwendung anlegen.
-                </p>
-              </div>
-            </div>
-
-            <div style={formRowStyle}>
-              <div style={fieldBlockStyle}>
-                <label style={labelStyle}>Benutzername</label>
-                <input
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={fieldBlockStyle}>
-                <label style={labelStyle}>Passwort</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={fieldBlockStyleNarrow}>
-                <label style={labelStyle}>Rolle</label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="operator">Operator</option>
-                  <option value="user">User</option>
-                  <option value="developer">Developer</option>
-                </select>
-              </div>
-
-              <div style={actionFieldStyle}>
-                <button
-                  onClick={handleCreateUser}
-                  disabled={!newUsername.trim() || !newPassword.trim()}
+                <div
+                  key={user.id}
                   style={{
-                    ...primaryButtonStyle,
-                    opacity: !newUsername.trim() || !newPassword.trim() ? 0.6 : 1,
-                    cursor:
-                      !newUsername.trim() || !newPassword.trim()
-                        ? "not-allowed"
-                        : "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "1rem",
+                    padding: "0.75rem 0.9rem",
+                    borderRadius: "0.75rem",
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: "#ffffff",
                   }}
                 >
-                  Benutzer anlegen
-                </button>
-              </div>
-            </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <strong>{user.username}</strong>
+                    <span style={userBadgeStyle}>{user.role}</span>
 
-            {userCreateSuccess && <div style={successBoxStyle}>{userCreateSuccess}</div>}
-            {userCreateError && <div style={errorBoxStyle}>{userCreateError}</div>}
-          </section>
-        )}
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      style={{
+                        padding: "0.45rem 0.7rem",
+                        borderRadius: "0.6rem",
+                        border: "1px solid #fecaca",
+                        backgroundColor: "#fee2e2",
+                        color: "#991b1b",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Löschen
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       </div>
     </div>
   );
 }
-
 const colors = {
   pageBg: "#eef6f1",
   pageBgAlt: "#f7faf8",
