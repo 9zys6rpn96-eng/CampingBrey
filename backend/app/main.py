@@ -295,6 +295,28 @@ def create_user(
 
     return new_user
 
+@app.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: models.User = Depends(require_developer),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Du kannst deinen eigenen Account nicht löschen"
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": "Benutzer gelöscht"}
+
 @app.get("/users", response_model=list[schemas.UserRead])
 def list_users(
     db: Session = Depends(get_db),

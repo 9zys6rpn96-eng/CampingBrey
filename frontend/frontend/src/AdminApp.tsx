@@ -9,6 +9,7 @@ import {
   createUser,
   fetchAvailablePlaces,
   fetchUsers,
+  deleteUser,
 } from "./services/api";
 import { PlaceList } from "./components/PlaceList.tsx";
 import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
@@ -372,6 +373,21 @@ function AdminApp() {
   }
 }
 
+ async function handleDeleteUser(userId: number) {
+  const confirmed = window.confirm(
+    "Diesen Benutzer wirklich löschen?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteUser(userId);
+    await loadUsers();
+    setActionSuccess("Benutzer wurde gelöscht.");
+  } catch (err: any) {
+    setUsersError(err.message || "Fehler beim Löschen");
+  }
+}
   function handleSelectPlace(placeId: number) {
     setSelectedPlaceId((prev) => (prev === placeId ? null : placeId));
   }
@@ -696,22 +712,39 @@ function AdminApp() {
 
             <div style={{ display: "grid", gap: "0.6rem", marginBottom: "1.5rem" }}>
               {users.map((user) => (
-                <div
-                  key={user.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "1rem",
-                    padding: "0.75rem 0.9rem",
-                    borderRadius: "0.75rem",
-                    border: `1px solid ${colors.border}`,
-                    backgroundColor: "#ffffff",
-                  }}
-                >
-                  <strong>{user.username}</strong>
-                  <span style={userBadgeStyle}>{user.role}</span>
-                </div>
+                  <div
+                      key={user.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "1rem",
+                        padding: "0.75rem 0.9rem",
+                        borderRadius: "0.75rem",
+                        border: `1px solid ${colors.border}`,
+                        backgroundColor: "#ffffff",
+                      }}
+                  >
+                    <div style={{display: "flex", alignItems: "center", gap: "1rem"}}>
+                      <strong>{user.username}</strong>
+                      <span style={userBadgeStyle}>{user.role}</span>
+
+                      <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          style={{
+                            padding: "0.45rem 0.7rem",
+                            borderRadius: "0.6rem",
+                            border: "1px solid #fecaca",
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                          }}
+                      >
+                        Löschen
+                      </button>
+                    </div>
+                  </div>
               ))}
             </div>
 

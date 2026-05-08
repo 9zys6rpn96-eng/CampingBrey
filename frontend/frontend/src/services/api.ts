@@ -206,3 +206,23 @@ export async function createUser(data: {
 export async function fetchUsers(): Promise<User[]> {
   return apiGet<User[]>("/users");
 }
+
+export async function deleteUser(userId: number) {
+  const token = getAuthToken();
+
+  const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: "DELETE",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Benutzer konnte nicht gelöscht werden");
+  }
+
+  return res.json();
+}
