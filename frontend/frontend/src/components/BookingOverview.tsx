@@ -125,7 +125,7 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
               <th style={thStyle}>Platz</th>
               <th style={thStyle}>Gast</th>
               <th style={thStyle}>Nächte</th>
-              <th style={thStyle}>Fahrzeug</th>
+              <th style={thStyle}>Fahrzeuglänge / Zeltgröße</th>
               <th style={thStyle}>Notizen</th>
               <th style={thStyle}>Status</th>
             </tr>
