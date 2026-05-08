@@ -417,7 +417,7 @@ def list_places_with_status(
 def list_available_places(
     start_date: date,
     end_date: date,
-    vehicle_length_m: int | None = None,
+    vehicle_length_m: float | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_authenticated_user),
 ):
@@ -487,6 +487,7 @@ def update_place(
     place.name = updated.name
     place.type = updated.type
     place.capacity = updated.capacity
+    place.length_m = updated.length_m
 
     db.commit()
     db.refresh(place)

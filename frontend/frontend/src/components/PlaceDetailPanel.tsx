@@ -276,8 +276,17 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
                 <div style={eyebrowStyle}>Ausgewählter Platz</div>
                 <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
                 <div style={metaRowStyle}>
-                    <span style={metaBadgeStyle}>{currentPlace.type || "Stellplatz"}</span>
-                    <span style={metaBadgeStyle}>Kapazität {currentPlace.capacity}</span>
+          <span style={metaBadgeStyle}>
+            {currentPlace.type || "Stellplatz"}
+          </span>
+
+                    <span style={metaBadgeStyle}>
+            Kapazität {currentPlace.capacity}
+          </span>
+
+                    <span style={metaBadgeStyle}>
+            📏 {currentPlace.length_m ? `${currentPlace.length_m} m` : "nicht gesetzt"}
+          </span>
                 </div>
             </div>
 
