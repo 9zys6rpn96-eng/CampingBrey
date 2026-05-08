@@ -516,7 +516,19 @@ def create_booking(
             status_code=400,
             detail="Dieser Platz kann nicht gebucht werden"
         )
+    if booking.vehicle_size and place.length_m:
+        try:
+            vehicle_length = float(
+                booking.vehicle_size.replace(" m", "").replace(",", ".")
+            )
 
+            if vehicle_length > place.length_m:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Fahrzeug zu lang. Maximal {place.length_m} m erlaubt."
+                )
+        except ValueError:
+            pass
         overlapping_bookings = (
             db.query(models.Booking)
             .filter(

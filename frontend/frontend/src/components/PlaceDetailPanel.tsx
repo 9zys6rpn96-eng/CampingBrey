@@ -112,7 +112,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const [selectedTypeOption, setSelectedTypeOption] = useState<string>("Stellplatz");
   const [editCapacity, setEditCapacity] = useState(1);
   const [guestName, setGuestName] = useState("");
-  const [vehicleSize, setVehicleSize] = useState("");
+  const [vehicleLengthM, setVehicleLengthM] = useState("");
   const [notes, setNotes] = useState("");
   const [editLengthM, setEditLengthM] = useState("");
 
@@ -139,7 +139,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
       setStartDate("");
       setEndDate("");
       setGuestName("");
-      setVehicleSize("");
+      setVehicleLengthM("");
       setNotes("");
     }
   }, [place]);
@@ -193,38 +193,60 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
     }
 
   async function handleSubmit() {
-    if (!startDate || !endDate) {
-      setErrorMessage("Bitte Start- und Enddatum auswählen.");
-      return;
-    }
-
-    if (!guestName.trim()) {
-      setErrorMessage("Bitte einen Namen eingeben.");
-      return;
-    }
-
-    try {
-      setErrorMessage(null);
-
-      await createBooking({
-        place_id: currentPlace.id,
-        start_date: startDate,
-        end_date: endDate,
-        guest_name: guestName,
-        vehicle_size: vehicleSize,
-        notes: notes,
-      });
-
-      await onBookingCreated();
-      setStartDate("");
-      setEndDate("");
-      setGuestName("");
-      setVehicleSize("");
-      setNotes("");
-    } catch (err: any) {
-      setErrorMessage(err.message);
-    }
+  if (!startDate || !endDate) {
+    setErrorMessage("Bitte Start- und Enddatum auswählen.");
+    return;
   }
+
+  if (!guestName.trim()) {
+    setErrorMessage("Bitte einen Namen eingeben.");
+    return;
+  }
+
+  const parsedVehicleLength =
+    vehicleLengthM.trim() === ""
+      ? null
+      : Number(vehicleLengthM.replace(",", "."));
+
+  if (
+  currentPlace.type !== "Zeltwiese" &&
+  parsedVehicleLength !== null &&
+  currentPlace.length_m !== null &&
+  currentPlace.length_m !== undefined &&
+  parsedVehicleLength > currentPlace.length_m
+) {
+    setErrorMessage(
+      `Fahrzeug ist zu lang. Maximal ${currentPlace.length_m} m erlaubt.`
+    );
+    return;
+  }
+
+  try {
+    setErrorMessage(null);
+
+    await createBooking({
+      place_id: currentPlace.id,
+      start_date: startDate,
+      end_date: endDate,
+      guest_name: guestName,
+      vehicle_size: vehicleLengthM
+          ? currentPlace.type === "Zeltwiese"
+            ? vehicleLengthM
+            : `${vehicleLengthM} m`
+          : "",
+      notes: notes,
+    });
+
+    await onBookingCreated();
+    setStartDate("");
+    setEndDate("");
+    setGuestName("");
+    setVehicleLengthM("");
+    setNotes("");
+  } catch (err: any) {
+    setErrorMessage(err.message);
+  }
+}
 
   async function handleSavePlace() {
   try {
@@ -541,10 +563,22 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
                 </div>
 
                 <div>
-                    <label style={labelStyle}>Fahrzeuggröße</label>
+                    <label style={labelStyle}>
+                        {currentPlace.type === "Zeltwiese"
+                            ? "⛺ Zeltgröße"
+                            : "🚐 Fahrzeuglänge in m"}
+                    </label>
+
                     <input
-                        value={vehicleSize}
-                        onChange={(e) => setVehicleSize(e.target.value)}
+                        type="text"
+                        inputMode={currentPlace.type === "Zeltwiese" ? "text" : "decimal"}
+                        value={vehicleLengthM}
+                        onChange={(e) => setVehicleLengthM(e.target.value)}
+                        placeholder={
+                            currentPlace.type === "Zeltwiese"
+                                ? "z.B. Familienzelt / 4x3 m"
+                                : "z.B. 7,5"
+                        }
                         style={inputStyle}
                     />
                 </div>
@@ -602,16 +636,16 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
             </div>
 
             {startDate && endDate && (
-              <div
-                style={{
-                  ...infoBoxStyle,
-                  backgroundColor: hasConflict ? "#fee2e2" : "#dcfce7",
-                  color: hasConflict ? "#991b1b" : "#166534",
-                  borderColor: hasConflict ? "#fecaca" : "#bbf7d0",
-                }}
-              >
-                {hasConflict
-                  ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${currentPlace.capacity})`
+                <div
+                    style={{
+                        ...infoBoxStyle,
+                        backgroundColor: hasConflict ? "#fee2e2" : "#dcfce7",
+                        color: hasConflict ? "#991b1b" : "#166534",
+                        borderColor: hasConflict ? "#fecaca" : "#bbf7d0",
+                    }}
+                >
+                    {hasConflict
+                        ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${currentPlace.capacity})`
                   : `✅ Zeitraum verfügbar (max. ${maxOccupancyInSelectedRange}/${currentPlace.capacity} gleichzeitig belegt)`}
               </div>
             )}
