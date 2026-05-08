@@ -128,6 +128,17 @@ export function BookingList({ bookings, onDelete }: BookingListProps) {
                   >
                       Aufenthalt: {getStayLength(b.start_date, b.end_date)}
                   </div>
+                  {b.created_by && (
+                    <div
+                      style={{
+                        color: "#6b7280",
+                        fontSize: "0.88rem",
+                        marginBottom: b.vehicle_size || b.notes ? "0.55rem" : 0,
+                      }}
+                    >
+                      Angelegt von: {b.created_by}
+                    </div>
+                  )}
 
                   {(b.vehicle_size || b.notes) && (
                       <div

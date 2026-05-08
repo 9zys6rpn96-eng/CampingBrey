@@ -557,6 +557,7 @@ def create_booking(
         guest_name=booking.guest_name,
         vehicle_size=booking.vehicle_size,
         notes=booking.notes,
+        created_by=current_user.username,
     )
     db.add(db_booking)
     db.commit()

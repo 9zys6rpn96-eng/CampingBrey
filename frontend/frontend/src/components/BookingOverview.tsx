@@ -127,6 +127,7 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
               <th style={thStyle}>Nächte</th>
               <th style={thStyle}>Fahrzeuglänge / Zeltgröße</th>
               <th style={thStyle}>Notizen</th>
+              <th style={thStyle}>Erstellt von</th>
               <th style={thStyle}>Status</th>
             </tr>
             </thead>
@@ -136,15 +137,23 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
                   <tr key={booking.id}>
                     <td style={tdStyle}>{formatDate(booking.start_date)}</td>
                     <td style={tdStyle}>{formatDate(booking.end_date)}</td>
+
                     <td style={tdStyle}>
                       <strong>Platz {getPlaceName(booking.place_id)}</strong>
                     </td>
+
                     <td style={tdStyle}>{booking.guest_name}</td>
+
                     <td style={tdStyle}>
                       {getStayLength(booking.start_date, booking.end_date)}
                     </td>
+
                     <td style={tdStyle}>{booking.vehicle_size || "–"}</td>
+
                     <td style={tdStyle}>{booking.notes || "–"}</td>
+
+                    <td style={tdStyle}>{booking.created_by || "Unbekannt"}</td>
+
                     <td style={tdStyle}>{getStatusLabel(booking.status)}</td>
                   </tr>
               ))}

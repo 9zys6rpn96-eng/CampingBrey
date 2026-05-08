@@ -14,9 +14,10 @@ export interface Booking {
   start_date: string;
   end_date: string;
   guest_name: string;
-  vehicle_size: string;
-  notes: string;
+  vehicle_size?: string;
+  notes?: string;
   status?: string;
+  created_by?: string;
 }
 
 export type PlaceStatusColor =

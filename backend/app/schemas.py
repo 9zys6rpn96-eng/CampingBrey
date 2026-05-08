@@ -50,7 +50,8 @@ class BookingCreate(BookingBase):
 class BookingRead(BookingBase):
     id: int
     place_id: int
-    status: str | None = None  # ✅ HIER HINZU
+    status: str | None = None
+    created_by: str | None = None
 
     class Config:
         from_attributes = True

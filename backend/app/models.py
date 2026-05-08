@@ -26,6 +26,7 @@ class Booking(Base):
     status = Column(String, default="active")
 
     place = relationship("Place", back_populates="bookings")
+    created_by = Column(String, nullable=True)
 
 class User(Base):
     __tablename__ = "users"
