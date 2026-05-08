@@ -114,6 +114,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const [guestName, setGuestName] = useState("");
   const [vehicleSize, setVehicleSize] = useState("");
   const [notes, setNotes] = useState("");
+  const [editLengthM, setEditLengthM] = useState("");
 
   useEffect(() => {
     if (place) {
@@ -122,6 +123,11 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
       setEditName(place.name);
       setEditType(currentType);
       setEditCapacity(place.capacity || 1);
+      setEditLengthM(
+      place.length_m !== null && place.length_m !== undefined
+        ? String(place.length_m)
+        : ""
+    );
 
       if (PLACE_TYPE_OPTIONS.includes(currentType as (typeof PLACE_TYPE_OPTIONS)[number])) {
         setSelectedTypeOption(currentType);
@@ -221,20 +227,24 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   }
 
   async function handleSavePlace() {
-    try {
-      setErrorMessage(null);
+  try {
+    setErrorMessage(null);
 
-      await updatePlace(currentPlace.id, {
-        name: editName,
-        type: editType,
-        capacity: editCapacity,
-      });
+    await updatePlace(currentPlace.id, {
+      name: editName,
+      type: editType,
+      capacity: editCapacity,
+      length_m:
+        editLengthM.trim() === ""
+          ? null
+          : Number(editLengthM.replace(",", ".")),
+    });
 
-      await onBookingCreated();
-    } catch (err: any) {
-      setErrorMessage(err.message);
-    }
+    await onBookingCreated();
+  } catch (err: any) {
+    setErrorMessage(err.message);
   }
+}
 
   function requestDeleteBooking(bookingId: number) {
     setBookingToDelete(bookingId);
@@ -349,75 +359,85 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
           </div>
         </div>
 
-        <div style={formGridStyle}>
-          <div>
-            <label style={labelStyle}>Name / Nummer</label>
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              style={inputStyle}
-            />
+          <div style={formGridStyle}>
+              <div>
+                  <label style={labelStyle}>Name / Nummer</label>
+                  <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      style={inputStyle}
+                  />
+              </div>
+
+              <div>
+                  <label style={labelStyle}>Typ</label>
+                  <select
+                      value={selectedTypeOption}
+                      onChange={(e) => {
+                          const value = e.target.value;
+                          setSelectedTypeOption(value);
+
+                          if (value !== CUSTOM_PLACE_TYPE) {
+                              setEditType(value);
+                          } else {
+                              setEditType("");
+                          }
+                      }}
+                      style={inputStyle}
+                  >
+                      {PLACE_TYPE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                              {option}
+                          </option>
+                      ))}
+                      <option value={CUSTOM_PLACE_TYPE}>Anderer Typ...</option>
+                  </select>
+
+                  {selectedTypeOption === CUSTOM_PLACE_TYPE && (
+                      <input
+                          value={editType}
+                          onChange={(e) => setEditType(e.target.value)}
+                          placeholder="Eigenen Typ eingeben"
+                          style={{...inputStyle, marginTop: "0.6rem"}}
+                      />
+                  )}
+              </div>
+
+              <div>
+                  <label style={labelStyle}>Kapazität</label>
+                  <input
+                      type="number"
+                      min="1"
+                      value={editCapacity}
+                      onChange={(e) => setEditCapacity(Number(e.target.value))}
+                      style={inputStyle}
+                  />
+              </div>
+              <div>
+                  <label style={labelStyle}>Platzlänge in m</label>
+                  <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editLengthM}
+                      onChange={(e) => setEditLengthM(e.target.value)}
+                      placeholder="z.B. 8,5"
+                      style={inputStyle}
+                  />
+              </div>
+              <div style={buttonFieldStyle}>
+                  <button onClick={handleSavePlace} style={primaryButtonStyle}>
+                      Änderungen speichern
+                  </button>
+              </div>
           </div>
-
-          <div>
-            <label style={labelStyle}>Typ</label>
-            <select
-              value={selectedTypeOption}
-              onChange={(e) => {
-                const value = e.target.value;
-                setSelectedTypeOption(value);
-
-                if (value !== CUSTOM_PLACE_TYPE) {
-                  setEditType(value);
-                } else {
-                  setEditType("");
-                }
-              }}
-              style={inputStyle}
-            >
-              {PLACE_TYPE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value={CUSTOM_PLACE_TYPE}>Anderer Typ...</option>
-            </select>
-
-            {selectedTypeOption === CUSTOM_PLACE_TYPE && (
-              <input
-                value={editType}
-                onChange={(e) => setEditType(e.target.value)}
-                placeholder="Eigenen Typ eingeben"
-                style={{ ...inputStyle, marginTop: "0.6rem" }}
-              />
-            )}
-          </div>
-
-          <div>
-            <label style={labelStyle}>Kapazität</label>
-            <input
-              type="number"
-              min="1"
-              value={editCapacity}
-              onChange={(e) => setEditCapacity(Number(e.target.value))}
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={buttonFieldStyle}>
-            <button onClick={handleSavePlace} style={primaryButtonStyle}>
-              Änderungen speichern
-            </button>
-          </div>
-        </div>
       </section>
-)}
-      <section style={panelStyle}>
-        <div style={sectionHeaderStyle}>
-          <div>
-            <h3 style={sectionTitleStyle}>Belegungsübersicht</h3>
-            <p style={sectionSubtitleStyle}>
-              Zeitliche Übersicht der vorhandenen Buchungen für diesen Platz.
+    )}
+        <section style={panelStyle}>
+            <div style={sectionHeaderStyle}>
+                <div>
+                    <h3 style={sectionTitleStyle}>Belegungsübersicht</h3>
+                    <p style={sectionSubtitleStyle}>
+                        Zeitliche Übersicht der vorhandenen Buchungen für diesen Platz.
             </p>
           </div>
         </div>

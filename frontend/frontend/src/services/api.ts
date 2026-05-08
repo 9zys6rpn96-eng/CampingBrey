@@ -158,7 +158,12 @@ export async function deleteBooking(bookingId: number) {
 
 export async function updatePlace(
   id: number,
-  data: { name: string; type: string; capacity: number }
+  data: {
+  name: string;
+  type: string;
+  capacity: number;
+  length_m?: number | null;
+}
 ) {
   const token = getAuthToken();
 

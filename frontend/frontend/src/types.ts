@@ -5,6 +5,7 @@ export interface Place {
   name: string;
   type: string | null;
   capacity: number;
+  length_m?: number | null;
 }
 
 export interface Booking {
@@ -36,6 +37,7 @@ export interface PlaceStatus {
   occupied_days: number;
   fully_booked_days: number;
   status: PlaceStatusColor;
+  length_m?: number | null;
 }
 
 export interface User {

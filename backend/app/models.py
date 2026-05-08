@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -10,7 +10,7 @@ class Place(Base):
     type = Column(String, nullable=True)  # Zelt, Wohnwagen, etc.
     capacity = Column(Integer, nullable=False, default=1)
     bookings = relationship("Booking", back_populates="place")
-    length_m = Column(Integer, nullable=True)
+    length_m = Column(Float, nullable=True)
 
 class Booking(Base):
     __tablename__ = "bookings"
