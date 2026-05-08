@@ -45,6 +45,24 @@ export async function login(username: string, password: string) {
 
   return res.json();
 }
+
+export async function fetchAvailablePlaces(
+  startDate: string,
+  endDate: string,
+  vehicleLengthM?: number
+): Promise<Place[]> {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+  });
+
+  if (vehicleLengthM !== undefined && vehicleLengthM > 0) {
+    params.set("vehicle_length_m", String(vehicleLengthM));
+  }
+
+  return apiGet<Place[]>(`/places/available?${params.toString()}`);
+}
+
 export async function markNoShow(bookingId: number) {
   const token = getAuthToken();
 

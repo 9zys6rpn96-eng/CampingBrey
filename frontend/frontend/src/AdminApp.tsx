@@ -7,6 +7,7 @@ import {
   login,
   fetchMe,
   createUser,
+  fetchAvailablePlaces,
 } from "./services/api";
 import { PlaceList } from "./components/PlaceList.tsx";
 import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
@@ -80,6 +81,12 @@ function AdminApp() {
   const [weekStart, setWeekStart] = useState<Date>(() => new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [searchStartDate, setSearchStartDate] = useState(() => toIsoDate(new Date()));
+  const [searchEndDate, setSearchEndDate] = useState(() => toIsoDate(addDays(new Date(), 1)));
+  const [vehicleLengthM, setVehicleLengthM] = useState("");
+  const [availablePlaces, setAvailablePlaces] = useState<Place[]>([]);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -257,6 +264,25 @@ function AdminApp() {
   function goToNextWeek() {
     setWeekStart((prev) => addDays(prev, 7));
   }
+
+  async function handleAvailabilitySearch() {
+  try {
+    setAvailabilityError(null);
+
+    const length =
+      vehicleLengthM.trim() === "" ? undefined : Number(vehicleLengthM);
+
+    const result = await fetchAvailablePlaces(
+      searchStartDate,
+      searchEndDate,
+      length
+    );
+
+    setAvailablePlaces(result);
+  } catch (err: any) {
+    setAvailabilityError(err.message || "Fehler bei der Verfügbarkeitssuche");
+  }
+}
 
   async function handleLogin() {
     try {
@@ -455,6 +481,65 @@ function AdminApp() {
           </div>
         </section>
 
+        <section style={cardStyle}>
+          <div style={cardHeaderStyle}>
+            <div>
+              <h2 style={cardTitleStyle}>Freie Plätze suchen</h2>
+              <p style={cardSubtitleStyle}>
+                Zeitraum und optional Fahrzeuglänge angeben.
+              </p>
+            </div>
+          </div>
+
+          <div style={formRowStyle}>
+            <div style={fieldBlockStyle}>
+              <label style={labelStyle}>Anreise</label>
+              <input
+                  type="date"
+                  value={searchStartDate}
+                  onChange={(e) => setSearchStartDate(e.target.value)}
+                  style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldBlockStyle}>
+              <label style={labelStyle}>Abreise</label>
+              <input
+                  type="date"
+                  value={searchEndDate}
+                  onChange={(e) => setSearchEndDate(e.target.value)}
+                  style={inputStyle}
+              />
+            </div>
+
+            <div style={fieldBlockStyleNarrow}>
+              <label style={labelStyle}>Fahrzeuglänge in m</label>
+              <input
+                  type="number"
+                  min="1"
+                  value={vehicleLengthM}
+                  onChange={(e) => setVehicleLengthM(e.target.value)}
+                  style={inputStyle}
+              />
+            </div>
+
+            <div style={actionFieldStyle}>
+              <button onClick={handleAvailabilitySearch} style={primaryButtonStyle}>
+                Freie Plätze anzeigen
+              </button>
+            </div>
+          </div>
+
+          {availabilityError && <div style={errorBoxStyle}>{availabilityError}</div>}
+
+          {availablePlaces.length > 0 && (
+              <div style={{marginTop: "1rem", color: colors.text}}>
+                <strong>Freie passende Plätze:</strong>{" "}
+                {availablePlaces.map((p) => p.name).join(", ")}
+              </div>
+          )}
+        </section>
+
         <section style={statsOverviewGridStyle}>
           <div style={statsOverviewCardStyle}>
             <div style={statsOverviewLabelStyle}>🟢 Frei</div>
@@ -583,12 +668,12 @@ function AdminApp() {
                   </div>
 
                   <CampingMap
-                    places={places}
-                    placeStatuses={placeStatuses}
-                    bookings={bookings}
-                    selectedPlaceId={selectedPlaceId}
-                    onSelectPlace={handleSelectPlace}
-                    isDeveloper={currentUser.role === "developer"}
+                      places={places}
+                      placeStatuses={placeStatuses}
+                      bookings={bookings}
+                      selectedPlaceId={selectedPlaceId}
+                      onSelectPlace={handleSelectPlace}
+                      isDeveloper={currentUser.role === "developer"}
                   />
                 </section>
 
@@ -603,15 +688,15 @@ function AdminApp() {
                   </div>
 
                   <PlaceDetailPanel
-                    place={selectedPlace}
-                    bookings={bookingsForSelectedPlace}
-                    onBookingCreated={reloadData}
-                    canEditPlaces={
-                      currentUser.role === "developer" || currentUser.role === "operator"
-                    }
+                      place={selectedPlace}
+                      bookings={bookingsForSelectedPlace}
+                      onBookingCreated={reloadData}
+                      canEditPlaces={
+                          currentUser.role === "developer" || currentUser.role === "operator"
+                      }
                   />
                 </section>
-                <BookingOverview bookings={bookings} places={places} />
+                <BookingOverview bookings={bookings} places={places}/>
               </main>
             </div>
         )}

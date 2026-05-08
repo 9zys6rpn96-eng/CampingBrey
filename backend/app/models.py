@@ -10,6 +10,7 @@ class Place(Base):
     type = Column(String, nullable=True)  # Zelt, Wohnwagen, etc.
     capacity = Column(Integer, nullable=False, default=1)
     bookings = relationship("Booking", back_populates="place")
+    length_m = Column(Integer, nullable=True)
 
 class Booking(Base):
     __tablename__ = "bookings"

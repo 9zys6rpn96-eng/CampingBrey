@@ -8,6 +8,7 @@ class PlaceBase(BaseModel):
     name: str
     type: str | None = None
     capacity: int = 1
+    length_m: int | None = None
 
 
 class PlaceCreate(PlaceBase):

@@ -383,6 +383,53 @@ def list_places_with_status(
 
     return result
 
+@app.get("/places/available", response_model=list[schemas.PlaceRead])
+def list_available_places(
+    start_date: date,
+    end_date: date,
+    vehicle_length_m: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_authenticated_user),
+):
+    if start_date >= end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date must be before end date"
+        )
+
+    places = db.query(models.Place).all()
+    available_places = []
+
+    for place in places:
+        if place.type in ["Dauercamper", "Gesperrt"]:
+            continue
+
+        if vehicle_length_m is not None and place.length_m is not None:
+            if vehicle_length_m > place.length_m:
+                continue
+
+        overlapping_bookings = (
+            db.query(models.Booking)
+            .filter(
+                models.Booking.place_id == place.id,
+                start_date < models.Booking.end_date,
+                end_date > models.Booking.start_date,
+            )
+            .all()
+        )
+
+        if would_exceed_capacity(
+            place=place,
+            existing_bookings=overlapping_bookings,
+            start_date=start_date,
+            end_date=end_date,
+        ):
+            continue
+
+        available_places.append(place)
+
+    return available_places
+
 @app.put("/bookings/{booking_id}/noshow")
 def mark_no_show(booking_id: int, db: Session = Depends(get_db)):
     booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
