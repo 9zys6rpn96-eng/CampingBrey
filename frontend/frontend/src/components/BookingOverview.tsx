@@ -55,6 +55,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const [editTentCount, setEditTentCount] = useState("1");
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [hidePast, setHidePast] = useState(false);
   const { isMobile, isTablet } = useViewport();
   const sortedBookings = useMemo(
   () =>
@@ -64,6 +65,8 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   [bookings]
 );
 
+  const todayIso = new Date().toISOString().split("T")[0];
+
   function getPlaceName(placeId: number) {
     return places.find((p) => p.id === placeId)?.name ?? `ID ${placeId}`;
   }
@@ -71,11 +74,10 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const filteredBookings = useMemo(() => {
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
-  if (!normalizedSearch) {
-    return sortedBookings;
-  }
-
   return sortedBookings.filter((booking) => {
+    if (hidePast && booking.end_date <= todayIso) return false;
+
+    if (!normalizedSearch) return true;
     const placeName = getPlaceName(booking.place_id);
 
     const searchableText = [
@@ -97,7 +99,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
 
     return searchableText.includes(normalizedSearch);
   });
-}, [searchTerm, sortedBookings, places]);
+}, [searchTerm, sortedBookings, places, hidePast, todayIso]);
 
   function openEditDialog(booking: Booking) {
   setEditingBooking(booking);
@@ -238,6 +240,16 @@ async function handleSaveBooking() {
               }}
           >
             CSV exportieren
+          </button>
+
+          <button
+              onClick={() => setHidePast((prev) => !prev)}
+              style={{
+                ...togglePastButtonStyle,
+                ...(hidePast ? togglePastButtonActiveStyle : {}),
+              }}
+          >
+            {hidePast ? "🕐 Vergangene anzeigen" : "🗂️ Vergangene ausblenden"}
           </button>
         </div>
 
@@ -705,4 +717,21 @@ const saveButtonStyle: React.CSSProperties = {
   background: "linear-gradient(135deg, #15803d 0%, #166534 100%)",
   color: "#ffffff",
   fontWeight: 700,
+};
+
+const togglePastButtonStyle: React.CSSProperties = {
+  padding: "0.72rem 1rem",
+  borderRadius: "0.75rem",
+  border: "1px solid #bfd4c7",
+  backgroundColor: "#ffffff",
+  color: "#355447",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
+
+const togglePastButtonActiveStyle: React.CSSProperties = {
+  backgroundColor: "#ecfdf5",
+  border: "1px solid #a7f3d0",
+  color: "#059669",
 };
