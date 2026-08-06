@@ -30,22 +30,6 @@ function addDays(date: Date, days: number) {
   return result;
 }
 
-function formatDate(dateString: string) {
-  const [year, month, day] = dateString.split("-");
-
-  const date = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day)
-  );
-
-  return date.toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 function sortPlacesByName(places: Place[]) {
   return [...places].sort((a, b) => {
     const regex = /^(\d+)([a-zA-Z]*)$/;
@@ -80,7 +64,6 @@ function AdminApp() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [placeStatuses, setPlaceStatuses] = useState<PlaceStatus[]>([]);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
-  const [weekStart, setWeekStart] = useState<Date>(() => new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,9 +90,7 @@ function AdminApp() {
   const [userCreateError, setUserCreateError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  const weekStartIso = useMemo(() => toIsoDate(weekStart), [weekStart]);
-  const weekEndIso = useMemo(() => toIsoDate(addDays(weekStart, 6)), [weekStart]);
-  const selectedDateIso = weekStartIso;
+  const todayIso = useMemo(() => toIsoDate(new Date()), []);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const [users, setUsers] = useState<User[]>([]);
@@ -139,61 +120,20 @@ function AdminApp() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      return;
-    }
+  if (!currentUser) {
+    setLoading(false);
+    return;
+  }
 
-    async function initialLoad() {
-      try {
-        if (!hasLoadedOnce) {
-          setLoading(true);
-        }
-
-        setError(null);
-
-        const [placesData, bookingsData, statusData] = await Promise.all([
-          fetchPlaces(),
-          fetchBookings(),
-          fetchPlaceStatuses(weekStartIso, weekEndIso),
-        ]);
-
-        const sortedPlaces = sortPlacesByName(placesData);
-
-        setPlaces(sortedPlaces);
-        setBookings(bookingsData);
-        setPlaceStatuses(statusData);
-
-        setSelectedPlaceId((prev) => {
-          if (prev === null) {
-            return null;
-          }
-
-          const stillExists = sortedPlaces.find((p) => p.id === prev);
-          return stillExists ? prev : null;
-        });
-      } catch (err) {
-        console.error(err);
-        setError("Fehler beim Laden der Daten");
-      } finally {
-        setLoading(false);
-        setHasLoadedOnce(true);
-      }
-    }
-
-    initialLoad();
-  }, [currentUser, weekStartIso, weekEndIso, hasLoadedOnce]);
-
-  async function reloadData() {
-    if (!currentUser) return;
-
+  async function initialLoad() {
     try {
+      setLoading(true);
       setError(null);
 
       const [placesData, bookingsData, statusData] = await Promise.all([
         fetchPlaces(),
         fetchBookings(),
-        fetchPlaceStatuses(weekStartIso, weekEndIso),
+        fetchPlaceStatuses(todayIso, todayIso),
       ]);
 
       const sortedPlaces = sortPlacesByName(placesData);
@@ -207,14 +147,52 @@ function AdminApp() {
           return null;
         }
 
-        const stillExists = sortedPlaces.find((p) => p.id === prev);
+        const stillExists = sortedPlaces.some((place) => place.id === prev);
         return stillExists ? prev : null;
       });
     } catch (err) {
       console.error(err);
       setError("Fehler beim Laden der Daten");
+    } finally {
+      setLoading(false);
+      setHasLoadedOnce(true);
     }
   }
+
+  initialLoad();
+}, [currentUser, todayIso]);
+
+async function reloadData() {
+  if (!currentUser) return;
+
+  try {
+    setError(null);
+
+    const [placesData, bookingsData, statusData] = await Promise.all([
+      fetchPlaces(),
+      fetchBookings(),
+      fetchPlaceStatuses(todayIso, todayIso),
+    ]);
+
+    const sortedPlaces = sortPlacesByName(placesData);
+
+    setPlaces(sortedPlaces);
+    setBookings(bookingsData);
+    setPlaceStatuses(statusData);
+
+    setSelectedPlaceId((prev) => {
+      if (prev === null) {
+        return null;
+      }
+
+      const stillExists = sortedPlaces.some((place) => place.id === prev);
+      return stillExists ? prev : null;
+    });
+  } catch (err) {
+    console.error(err);
+    setError("Fehler beim Laden der Daten");
+  }
+}
 
   const selectedPlace = places.find((p) => p.id === selectedPlaceId) ?? null;
 
@@ -239,40 +217,6 @@ function AdminApp() {
       { green: 0, yellow: 0, red: 0, gray: 0, blocked: 0 }
     );
   }, [placeStatuses]);
-
-  function handleDateChange(value: string) {
-  if (!value) return;
-
-  const [year, month, day] = value.split("-");
-
-  const selectedDate = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day)
-  );
-
-  setWeekStart(selectedDate);
-}
-
-  function goToCurrentWeek() {
-    setWeekStart(new Date());
-  }
-
-  function goToPreviousDay() {
-    setWeekStart((prev) => addDays(prev, -1));
-  }
-
-  function goToNextDay() {
-    setWeekStart((prev) => addDays(prev, 1));
-  }
-
-  function goToPreviousWeek() {
-    setWeekStart((prev) => addDays(prev, -7));
-  }
-
-  function goToNextWeek() {
-    setWeekStart((prev) => addDays(prev, 7));
-  }
 
   async function handleAvailabilitySearch() {
   try {
@@ -489,48 +433,6 @@ function AdminApp() {
       <div style={pageContentStyle}>
         {actionSuccess && <div style={successBoxStyle}>{actionSuccess}</div>}
 
-        <section style={heroCardStyle}>
-          <div>
-            <div style={eyebrowStyle}>Angezeigter Zeitraum</div>
-            <div style={heroDateStyle}>
-              {formatDate(weekStartIso)} – {formatDate(weekEndIso)}
-            </div>
-            <p style={heroTextStyle}>
-              Plätze auswählen, Buchungen ansehen und die Belegung direkt über die Karte verwalten.
-            </p>
-          </div>
-
-          <div style={heroControlsStyle}>
-            <div style={dateInputWrapperStyle}>
-              <label style={labelStyle}>Startdatum wählen</label>
-              <input
-                  type="date"
-                  value={selectedDateIso}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  style={inputStyle}
-              />
-            </div>
-
-            <div style={toolbarGroupStyle}>
-              <button onClick={goToCurrentWeek} style={softButtonStyle}>
-                Diese Woche
-              </button>
-              <button onClick={goToPreviousDay} style={softButtonStyle}>
-                ← Tag
-              </button>
-              <button onClick={goToNextDay} style={softButtonStyle}>
-                Tag →
-              </button>
-              <button onClick={goToPreviousWeek} style={softButtonStyle}>
-                ← Woche
-              </button>
-              <button onClick={goToNextWeek} style={softButtonStyle}>
-                Woche →
-              </button>
-            </div>
-          </div>
-        </section>
-
         <section style={cardStyle}>
           <div style={cardHeaderStyle}>
             <div>
@@ -662,38 +564,48 @@ function AdminApp() {
                     </div>
                   </div>
 
-                  <CampingMap
-                      places={places}
-                      placeStatuses={placeStatuses}
-                      bookings={bookings}
-                      selectedPlaceId={selectedPlaceId}
-                      onSelectPlace={handleSelectPlace}
-                      isDeveloper={currentUser.role === "developer"}
-                      availablePlaceIds={availablePlaceIds}
-                      availabilityMode={availabilityMode}
+                                    <CampingMap
+                    places={places}
+                    placeStatuses={placeStatuses}
+                    bookings={bookings}
+                    selectedPlaceId={selectedPlaceId}
+                    onSelectPlace={handleSelectPlace}
+                    isDeveloper={currentUser.role === "developer"}
+                    availablePlaceIds={availablePlaceIds}
+                    availabilityMode={availabilityMode}
                   />
                 </section>
 
-                <section style={cardStyle}>
-                  <div style={cardHeaderStyle}>
-                    <div>
-                      <h2 style={cardTitleStyle}>Platzdetails</h2>
-                      <p style={cardSubtitleStyle}>
-                        Informationen, Belegung und Buchungen des ausgewählten Platzes.
-                      </p>
-                    </div>
-                  </div>
+                {selectedPlace && (
+                  <section style={cardStyle}>
+                    <div style={cardHeaderStyle}>
+                      <div>
+                        <h2 style={cardTitleStyle}>
+                          Buchung für Platz {selectedPlace.name}
+                        </h2>
 
-                  <PlaceDetailPanel
+                        <p style={cardSubtitleStyle}>
+                          Gastdaten und Buchungszeitraum direkt erfassen.
+                        </p>
+                      </div>
+                    </div>
+
+                    <PlaceDetailPanel
                       place={selectedPlace}
                       bookings={bookingsForSelectedPlace}
                       onBookingCreated={reloadData}
                       canEditPlaces={
-                          currentUser.role === "developer" || currentUser.role === "operator"
+                        currentUser.role === "developer" ||
+                        currentUser.role === "operator"
                       }
-                  />
-                </section>
-                <BookingOverview bookings={bookings} places={places}/>
+                    />
+                  </section>
+                )}
+
+                <BookingOverview
+                  bookings={bookings}
+                  places={places}
+                />
               </main>
             </div>
         )}
@@ -921,60 +833,6 @@ const pageContentStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const heroCardStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "1.25rem",
-  flexWrap: "wrap",
-  marginBottom: "1rem",
-  padding: "1.35rem 1.4rem",
-  background:
-    "linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(240,253,244,0.96) 100%)",
-  border: `1px solid ${colors.borderStrong}`,
-  borderRadius: "1rem",
-  boxShadow: "0 10px 24px rgba(21, 128, 61, 0.08)",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  fontSize: "0.85rem",
-  fontWeight: 700,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
-  color: colors.brandDark,
-  marginBottom: "0.35rem",
-};
-
-const heroDateStyle: React.CSSProperties = {
-  fontSize: "1.45rem",
-  fontWeight: 800,
-  color: colors.text,
-};
-
-const heroTextStyle: React.CSSProperties = {
-  margin: "0.45rem 0 0 0",
-  color: colors.muted,
-  maxWidth: "720px",
-  lineHeight: 1.5,
-};
-
-const heroControlsStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "1rem",
-  flexWrap: "wrap",
-  alignItems: "end",
-  justifyContent: "flex-end",
-};
-
-const dateInputWrapperStyle: React.CSSProperties = {
-  minWidth: "220px",
-};
-
-const toolbarGroupStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "0.6rem",
-  flexWrap: "wrap",
-};
 
 const dashboardGridStyle: React.CSSProperties = {
   display: "grid",
@@ -1086,16 +944,6 @@ const primaryButtonStyle: React.CSSProperties = {
 
 const secondaryButtonStyle: React.CSSProperties = {
   padding: "0.7rem 1rem",
-  borderRadius: "0.75rem",
-  border: `1px solid ${colors.borderStrong}`,
-  backgroundColor: "#ffffff",
-  color: colors.text,
-  cursor: "pointer",
-  fontWeight: 600,
-};
-
-const softButtonStyle: React.CSSProperties = {
-  padding: "0.68rem 0.95rem",
   borderRadius: "0.75rem",
   border: `1px solid ${colors.borderStrong}`,
   backgroundColor: "#ffffff",

@@ -292,442 +292,442 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const isPermanentPlace = currentPlace.type === "Dauercamper";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <section style={heroSectionStyle}>
-            <div style={heroLeftStyle}>
-                <div style={eyebrowStyle}>Ausgewählter Platz</div>
-                <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
-                <div style={metaRowStyle}>
+      <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
+          <section style={heroSectionStyle}>
+              <div style={heroLeftStyle}>
+                  <div style={eyebrowStyle}>Ausgewählter Platz</div>
+                  <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
+                  <div style={metaRowStyle}>
           <span style={metaBadgeStyle}>
             {currentPlace.type || "Stellplatz"}
           </span>
 
-                    <span style={metaBadgeStyle}>
+                      <span style={metaBadgeStyle}>
             Kapazität {currentPlace.capacity}
           </span>
 
-                    <span style={metaBadgeStyle}>
+                      <span style={metaBadgeStyle}>
             📏 {currentPlace.length_m ? `${currentPlace.length_m} m` : "nicht gesetzt"}
           </span>
-                </div>
-            </div>
-
-            <div
-                style={{
-                    ...statusPillStyle,
-                    backgroundColor: isBlockedPlace
-                        ? "#fef3c7"
-                        : isPermanentPlace
-                            ? "#e5e7eb"
-                            : isCurrentlyBooked
-                                ? "#fee2e2"
-                                : "#dcfce7",
-
-                    color: isBlockedPlace
-                        ? "#92400e"
-                        : isPermanentPlace
-                            ? "#374151"
-                            : isCurrentlyBooked
-                                ? "#991b1b"
-                                : "#166534",
-
-                    borderColor: isBlockedPlace
-                        ? "#fde68a"
-                        : isPermanentPlace
-                            ? "#d1d5db"
-                            : isCurrentlyBooked
-                                ? "#fecaca"
-                                : "#bbf7d0",
-                }}
-            >
-                {isBlockedPlace
-                    ? "🚧 Gesperrt"
-                    : isPermanentPlace
-                        ? "⚫ Dauercamper"
-                        : isCurrentlyBooked
-                            ? "🔴 Aktuell belegt"
-                            : "🟢 Aktuell frei"}
-            </div>
-        </section>
-
-        <section style={statsGridStyle}>
-            <div style={statCardStyle}>
-                <div style={statLabelStyle}>Aktuelle Belegung</div>
-                <div style={statValueStyle}>
-                    {currentOccupancy} / {currentPlace.capacity}
-                </div>
-                <div style={statHelpStyle}>gleichzeitig belegte Einheiten heute</div>
-            </div>
-
-            <div style={statCardStyle}>
-                <div style={statLabelStyle}>Gebucht ab</div>
-                <div style={statValueStyleSmall}>
-                    {nextBooking ? formatDate(nextBooking.start_date) : "—"}
-                </div>
-                <div style={statHelpStyle}>
-                    {nextBooking ? "nächster Belegungsbeginn" : "keine zukünftige Buchung"}
-          </div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div style={statLabelStyle}>Frei ab</div>
-          <div style={statValueStyleSmall}>
-            {nextBooking ? formatDate(nextBooking.end_date) : "—"}
-          </div>
-          <div style={statHelpStyle}>
-            {nextBooking ? "wieder verfügbar ab" : "aktuell nichts geplant"}
-          </div>
-        </div>
-      </section>
-    {canEditPlaces && (
-      <section style={panelStyle}>
-        <div style={sectionHeaderStyle}>
-          <div>
-            <h3 style={sectionTitleStyle}>Platz bearbeiten</h3>
-            <p style={sectionSubtitleStyle}>
-              Name, Typ und Kapazität des Platzes anpassen.
-            </p>
-          </div>
-        </div>
-
-          <div style={formGridStyle}>
-              <div>
-                  <label style={labelStyle}>Name / Nummer</label>
-                  <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      style={inputStyle}
-                  />
+                  </div>
               </div>
 
-              <div>
-                  <label style={labelStyle}>Typ</label>
-                  <select
-                      value={selectedTypeOption}
-                      onChange={(e) => {
-                          const value = e.target.value;
-                          setSelectedTypeOption(value);
+              <div
+                  style={{
+                      ...statusPillStyle,
+                      backgroundColor: isBlockedPlace
+                          ? "#fef3c7"
+                          : isPermanentPlace
+                              ? "#e5e7eb"
+                              : isCurrentlyBooked
+                                  ? "#fee2e2"
+                                  : "#dcfce7",
 
-                          if (value !== CUSTOM_PLACE_TYPE) {
-                              setEditType(value);
-                          } else {
-                              setEditType("");
-                          }
-                      }}
-                      style={inputStyle}
-                  >
-                      {PLACE_TYPE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                              {option}
-                          </option>
-                      ))}
-                      <option value={CUSTOM_PLACE_TYPE}>Anderer Typ...</option>
-                  </select>
+                      color: isBlockedPlace
+                          ? "#92400e"
+                          : isPermanentPlace
+                              ? "#374151"
+                              : isCurrentlyBooked
+                                  ? "#991b1b"
+                                  : "#166534",
 
-                  {selectedTypeOption === CUSTOM_PLACE_TYPE && (
+                      borderColor: isBlockedPlace
+                          ? "#fde68a"
+                          : isPermanentPlace
+                              ? "#d1d5db"
+                              : isCurrentlyBooked
+                                  ? "#fecaca"
+                                  : "#bbf7d0",
+                  }}
+              >
+                  {isBlockedPlace
+                      ? "🚧 Gesperrt"
+                      : isPermanentPlace
+                          ? "⚫ Dauercamper"
+                          : isCurrentlyBooked
+                              ? "🔴 Aktuell belegt"
+                              : "🟢 Aktuell frei"}
+              </div>
+          </section>
+
+          <section style={panelStyle}>
+              <div style={sectionHeaderStyle}>
+                  <div>
+                      <h3 style={sectionTitleStyle}>Neue Buchung</h3>
+                      <p style={sectionSubtitleStyle}>
+                          Gastdaten und Zeitraum für eine neue Belegung erfassen.
+                      </p>
+                  </div>
+              </div>
+              <div style={quickActionWrapperStyle}>
+                  <div style={quickActionLabelStyle}>Schnellauswahl</div>
+
+                  <div style={quickActionRowStyle}>
+                      <button
+                          type="button"
+                          onClick={() => {
+                              const today = new Date();
+                              const tomorrow = addDays(today, 1);
+                              applyQuickRange(toIsoDate(today), toIsoDate(tomorrow));
+                          }}
+                          style={quickActionButtonStyle}
+                      >
+                          Heute → morgen
+                      </button>
+
+                      <button
+                          type="button"
+                          onClick={() => {
+                              const today = new Date();
+                              const nextWeek = addDays(today, 7);
+                              applyQuickRange(toIsoDate(today), toIsoDate(nextWeek));
+                          }}
+                          style={quickActionButtonStyle}
+                      >
+                          Heute → 7 Tage
+                      </button>
+
+                      <button
+                          type="button"
+                          onClick={() => {
+                              const range = getNextWeekendRange();
+                              applyQuickRange(range.start, range.end);
+                          }}
+                          style={quickActionButtonStyle}
+                      >
+                          Wochenende
+                      </button>
+
+                      <button
+                          type="button"
+                          onClick={() => {
+                              const range = getNextWeekRange();
+                              applyQuickRange(range.start, range.end);
+                          }}
+                          style={quickActionButtonStyle}
+                      >
+                          Nächste Woche
+                      </button>
+                  </div>
+              </div>
+
+              <div style={formGridWideStyle}>
+                  <div>
+                      <label style={labelStyle}>Name</label>
                       <input
-                          value={editType}
-                          onChange={(e) => setEditType(e.target.value)}
-                          placeholder="Eigenen Typ eingeben"
-                          style={{...inputStyle, marginTop: "0.6rem"}}
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          style={inputStyle}
                       />
-                  )}
+                  </div>
+
+                  <div>
+                      <label style={labelStyle}>
+                          {currentPlace.type === "Zeltwiese"
+                              ? "⛺ Zeltgröße"
+                              : "🚐 Fahrzeuglänge in m"}
+                      </label>
+
+                      <input
+                          type="text"
+                          inputMode={currentPlace.type === "Zeltwiese" ? "text" : "decimal"}
+                          value={vehicleLengthM}
+                          onChange={(e) => setVehicleLengthM(e.target.value)}
+                          placeholder={
+                              currentPlace.type === "Zeltwiese"
+                                  ? "z.B. Familienzelt / 4x3 m"
+                                  : "z.B. 7,5"
+                          }
+                          style={inputStyle}
+                      />
+                  </div>
+
+                  <div style={{gridColumn: "1 / -1"}}>
+                      <label style={labelStyle}>Weitere Informationen</label>
+                      <input
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          style={inputStyle}
+                      />
+                  </div>
+
+                  <div>
+                      <label style={labelStyle}>Von</label>
+                      <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          style={inputStyle}
+                      />
+                  </div>
+
+                  <div>
+                      <label style={labelStyle}>Bis</label>
+                      <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          style={inputStyle}
+                      />
+                  </div>
+
+                  <div style={buttonFieldStyle}>
+                      <button
+                          onClick={handleSubmit}
+                          disabled={
+                              !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
+                          }
+                          style={{
+                              ...primaryButtonStyle,
+                              opacity:
+                                  !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
+                                      ? 0.6
+                                      : 1,
+                              cursor:
+                                  !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
+                                      ? "not-allowed"
+                                      : "pointer",
+                          }}
+                      >
+                          Buchung anlegen
+                      </button>
+                  </div>
               </div>
 
-              <div>
-                  <label style={labelStyle}>Kapazität</label>
-                  <input
-                      type="number"
-                      min="1"
-                      value={editCapacity}
-                      onChange={(e) => setEditCapacity(Number(e.target.value))}
-                      style={inputStyle}
-                  />
+              {startDate && endDate && (
+                  <div
+                      style={{
+                          ...infoBoxStyle,
+                          backgroundColor: hasConflict ? "#fee2e2" : "#dcfce7",
+                          color: hasConflict ? "#991b1b" : "#166534",
+                          borderColor: hasConflict ? "#fecaca" : "#bbf7d0",
+                      }}
+                  >
+                      {hasConflict
+                          ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${currentPlace.capacity})`
+                          : `✅ Zeitraum verfügbar (max. ${maxOccupancyInSelectedRange}/${currentPlace.capacity} gleichzeitig belegt)`}
+                  </div>
+              )}
+
+              {isPermanentCamper && (
+                  <div
+                      style={{
+                          ...infoBoxStyle,
+                          backgroundColor: "#f3f4f6",
+                          color: "#374151",
+                          borderColor: "#e5e7eb",
+                      }}
+                  >
+                      Dieser Platz ist als Dauercamper markiert und kann nicht gebucht werden.
+                  </div>
+              )}
+
+              {errorMessage && (
+                  <div
+                      style={{
+                          ...infoBoxStyle,
+                          backgroundColor: "#fee2e2",
+                          color: "#991b1b",
+                          borderColor: "#fecaca",
+                      }}
+                  >
+                      {errorMessage}
+                  </div>
+              )}
+          </section>
+
+          <section style={statsGridStyle}>
+              <div style={statCardStyle}>
+                  <div style={statLabelStyle}>Aktuelle Belegung</div>
+                  <div style={statValueStyle}>
+                      {currentOccupancy} / {currentPlace.capacity}
+                  </div>
+                  <div style={statHelpStyle}>gleichzeitig belegte Einheiten heute</div>
               </div>
-              <div>
-                  <label style={labelStyle}>Platzlänge in m</label>
-                  <input
-                      type="text"
-                      inputMode="decimal"
-                      value={editLengthM}
-                      onChange={(e) => setEditLengthM(e.target.value)}
-                      placeholder="z.B. 8,5"
-                      style={inputStyle}
-                  />
+
+              <div style={statCardStyle}>
+                  <div style={statLabelStyle}>Gebucht ab</div>
+                  <div style={statValueStyleSmall}>
+                      {nextBooking ? formatDate(nextBooking.start_date) : "—"}
+                  </div>
+                  <div style={statHelpStyle}>
+                      {nextBooking ? "nächster Belegungsbeginn" : "keine zukünftige Buchung"}
+                  </div>
               </div>
-              <div style={buttonFieldStyle}>
-                  <button onClick={handleSavePlace} style={primaryButtonStyle}>
-                      Änderungen speichern
-                  </button>
+
+              <div style={statCardStyle}>
+                  <div style={statLabelStyle}>Frei ab</div>
+                  <div style={statValueStyleSmall}>
+                      {nextBooking ? formatDate(nextBooking.end_date) : "—"}
+                  </div>
+                  <div style={statHelpStyle}>
+                      {nextBooking ? "wieder verfügbar ab" : "aktuell nichts geplant"}
+                  </div>
               </div>
-          </div>
-      </section>
-    )}
-        <section style={panelStyle}>
-            <div style={sectionHeaderStyle}>
-                <div>
-                    <h3 style={sectionTitleStyle}>Belegungsübersicht</h3>
-                    <p style={sectionSubtitleStyle}>
-                        Zeitliche Übersicht der vorhandenen Buchungen für diesen Platz.
-            </p>
-          </div>
-        </div>
+          </section>
+          {canEditPlaces && (
+              <section style={panelStyle}>
+                  <div style={sectionHeaderStyle}>
+                      <div>
+                          <h3 style={sectionTitleStyle}>Platz bearbeiten</h3>
+                          <p style={sectionSubtitleStyle}>
+                              Name, Typ und Kapazität des Platzes anpassen.
+                          </p>
+                      </div>
+                  </div>
 
-        <div style={innerSurfaceStyle}>
-          <BookingTimeline bookings={sortedBookings} />
-        </div>
-      </section>
+                  <div style={formGridStyle}>
+                      <div>
+                          <label style={labelStyle}>Name / Nummer</label>
+                          <input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              style={inputStyle}
+                          />
+                      </div>
 
-      <section style={panelStyle}>
-        <div style={sectionHeaderStyle}>
-          <div>
-            <h3 style={sectionTitleStyle}>Buchungen</h3>
-            <p style={sectionSubtitleStyle}>
-              Alle vorhandenen Buchungen für Platz {currentPlace.name}.
-            </p>
-          </div>
-        </div>
+                      <div>
+                          <label style={labelStyle}>Typ</label>
+                          <select
+                              value={selectedTypeOption}
+                              onChange={(e) => {
+                                  const value = e.target.value;
+                                  setSelectedTypeOption(value);
 
-        <BookingList bookings={sortedBookings} onDelete={requestDeleteBooking} />
-      </section>
+                                  if (value !== CUSTOM_PLACE_TYPE) {
+                                      setEditType(value);
+                                  } else {
+                                      setEditType("");
+                                  }
+                              }}
+                              style={inputStyle}
+                          >
+                              {PLACE_TYPE_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>
+                                      {option}
+                                  </option>
+                              ))}
+                              <option value={CUSTOM_PLACE_TYPE}>Anderer Typ...</option>
+                          </select>
 
-        <section style={panelStyle}>
-            <div style={sectionHeaderStyle}>
-                <div>
-                    <h3 style={sectionTitleStyle}>Neue Buchung</h3>
-                    <p style={sectionSubtitleStyle}>
-                        Gastdaten und Zeitraum für eine neue Belegung erfassen.
-                    </p>
-                </div>
-            </div>
-            <div style={quickActionWrapperStyle}>
-                <div style={quickActionLabelStyle}>Schnellauswahl</div>
+                          {selectedTypeOption === CUSTOM_PLACE_TYPE && (
+                              <input
+                                  value={editType}
+                                  onChange={(e) => setEditType(e.target.value)}
+                                  placeholder="Eigenen Typ eingeben"
+                                  style={{...inputStyle, marginTop: "0.6rem"}}
+                              />
+                          )}
+                      </div>
 
-                <div style={quickActionRowStyle}>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const today = new Date();
-                            const tomorrow = addDays(today, 1);
-                            applyQuickRange(toIsoDate(today), toIsoDate(tomorrow));
-                        }}
-                        style={quickActionButtonStyle}
-                    >
-                        Heute → morgen
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const today = new Date();
-                            const nextWeek = addDays(today, 7);
-                            applyQuickRange(toIsoDate(today), toIsoDate(nextWeek));
-                        }}
-                        style={quickActionButtonStyle}
-                    >
-                        Heute → 7 Tage
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const range = getNextWeekendRange();
-                            applyQuickRange(range.start, range.end);
-                        }}
-                        style={quickActionButtonStyle}
-                    >
-                        Wochenende
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const range = getNextWeekRange();
-                            applyQuickRange(range.start, range.end);
-                        }}
-                        style={quickActionButtonStyle}
-                    >
-                        Nächste Woche
-                    </button>
-                </div>
-            </div>
-
-            <div style={formGridWideStyle}>
-                <div>
-                    <label style={labelStyle}>Name</label>
-                    <input
-                        value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div>
-                    <label style={labelStyle}>
-                        {currentPlace.type === "Zeltwiese"
-                            ? "⛺ Zeltgröße"
-                            : "🚐 Fahrzeuglänge in m"}
-                    </label>
-
-                    <input
-                        type="text"
-                        inputMode={currentPlace.type === "Zeltwiese" ? "text" : "decimal"}
-                        value={vehicleLengthM}
-                        onChange={(e) => setVehicleLengthM(e.target.value)}
-                        placeholder={
-                            currentPlace.type === "Zeltwiese"
-                                ? "z.B. Familienzelt / 4x3 m"
-                                : "z.B. 7,5"
-                        }
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div style={{gridColumn: "1 / -1"}}>
-                    <label style={labelStyle}>Weitere Informationen</label>
-                    <input
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div>
-                    <label style={labelStyle}>Von</label>
-                    <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div>
-                    <label style={labelStyle}>Bis</label>
-                    <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div style={buttonFieldStyle}>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={
-                            !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
-                        }
-                        style={{
-                            ...primaryButtonStyle,
-                            opacity:
-                                !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
-                                    ? 0.6
-                                    : 1,
-                            cursor:
-                                !startDate || !endDate || !guestName.trim() || hasConflict || isPermanentCamper
-                                    ? "not-allowed"
-                                    : "pointer",
-                        }}
-                    >
-                        Buchung anlegen
-                    </button>
-                </div>
-            </div>
-
-            {startDate && endDate && (
-                <div
-                    style={{
-                        ...infoBoxStyle,
-                        backgroundColor: hasConflict ? "#fee2e2" : "#dcfce7",
-                        color: hasConflict ? "#991b1b" : "#166534",
-                        borderColor: hasConflict ? "#fecaca" : "#bbf7d0",
-                    }}
-                >
-                    {hasConflict
-                        ? `⚠️ Zeitraum an mindestens einem Tag voll belegt (${maxOccupancyInSelectedRange}/${currentPlace.capacity})`
-                  : `✅ Zeitraum verfügbar (max. ${maxOccupancyInSelectedRange}/${currentPlace.capacity} gleichzeitig belegt)`}
+                      <div>
+                          <label style={labelStyle}>Kapazität</label>
+                          <input
+                              type="number"
+                              min="1"
+                              value={editCapacity}
+                              onChange={(e) => setEditCapacity(Number(e.target.value))}
+                              style={inputStyle}
+                          />
+                      </div>
+                      <div>
+                          <label style={labelStyle}>Platzlänge in m</label>
+                          <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editLengthM}
+                              onChange={(e) => setEditLengthM(e.target.value)}
+                              placeholder="z.B. 8,5"
+                              style={inputStyle}
+                          />
+                      </div>
+                      <div style={buttonFieldStyle}>
+                          <button onClick={handleSavePlace} style={primaryButtonStyle}>
+                              Änderungen speichern
+                          </button>
+                      </div>
+                  </div>
+              </section>
+          )}
+          <section style={panelStyle}>
+              <div style={sectionHeaderStyle}>
+                  <div>
+                      <h3 style={sectionTitleStyle}>Belegungsübersicht</h3>
+                      <p style={sectionSubtitleStyle}>
+                          Zeitliche Übersicht der vorhandenen Buchungen für diesen Platz.
+                      </p>
+                  </div>
               </div>
-            )}
 
-            {isPermanentCamper && (
-                <div
-                    style={{
-                        ...infoBoxStyle,
-                        backgroundColor: "#f3f4f6",
-                        color: "#374151",
-                        borderColor: "#e5e7eb",
-                    }}
-                >
-                    Dieser Platz ist als Dauercamper markiert und kann nicht gebucht werden.
-                </div>
-            )}
+              <div style={innerSurfaceStyle}>
+                  <BookingTimeline bookings={sortedBookings}/>
+              </div>
+          </section>
 
-            {errorMessage && (
-                <div
-                    style={{
-                        ...infoBoxStyle,
-                        backgroundColor: "#fee2e2",
-                        color: "#991b1b",
-                        borderColor: "#fecaca",
-                    }}
-                >
-                    {errorMessage}
-                </div>
-            )}
-        </section>
+          <section style={panelStyle}>
+              <div style={sectionHeaderStyle}>
+                  <div>
+                      <h3 style={sectionTitleStyle}>Buchungen</h3>
+                      <p style={sectionSubtitleStyle}>
+                          Alle vorhandenen Buchungen für Platz {currentPlace.name}.
+                      </p>
+                  </div>
+              </div>
 
-        {bookingToDelete !== null && (
-            <div style={modalOverlayStyle}>
-                <div style={modalCardStyle}>
-                    <h3 style={{marginTop: 0, marginBottom: "0.75rem", color: "#163126"}}>
-                        Buchung stornieren
-                    </h3>
+              <BookingList bookings={sortedBookings} onDelete={requestDeleteBooking}/>
+          </section>
 
-                    <p style={{marginBottom: "1rem", color: "#4b5563", lineHeight: 1.5}}>
-                        Möchtest du diese Buchung wirklich stornieren?
-                    </p>
+          {bookingToDelete !== null && (
+              <div style={modalOverlayStyle}>
+                  <div style={modalCardStyle}>
+                      <h3 style={{marginTop: 0, marginBottom: "0.75rem", color: "#163126"}}>
+                          Buchung stornieren
+                      </h3>
 
-                    <div style={modalButtonRowStyle}>
-                        <button onClick={cancelDeleteBooking} style={secondaryButtonStyle}>
-                            Abbrechen
-                        </button>
+                      <p style={{marginBottom: "1rem", color: "#4b5563", lineHeight: 1.5}}>
+                          Möchtest du diese Buchung wirklich stornieren?
+                      </p>
 
-                        <button
-                            onClick={confirmDeleteBooking}
-                            style={{
-                                ...dangerButtonStyle,
-                                backgroundColor: "#dc2626",
-                                borderColor: "#dc2626",
-                            }}
-                        >
-                            Stornieren
-                        </button>
-                        <button
-                            onClick={async () => {
-                                if (bookingToDelete === null) return;
+                      <div style={modalButtonRowStyle}>
+                          <button onClick={cancelDeleteBooking} style={secondaryButtonStyle}>
+                              Abbrechen
+                          </button>
 
-                                await markNoShow(bookingToDelete);
-                                setBookingToDelete(null);
-                                await onBookingCreated();
-                            }}
-                            style={{
-                                background: "#f59e0b",
-                                color: "white",
-                                borderRadius: "6px",
-                                padding: "6px 10px",
-                                border: "none",
-                                cursor: "pointer",
-                            }}
-                        >
-                            Nicht erschienen
-                        </button>
+                          <button
+                              onClick={confirmDeleteBooking}
+                              style={{
+                                  ...dangerButtonStyle,
+                                  backgroundColor: "#dc2626",
+                                  borderColor: "#dc2626",
+                              }}
+                          >
+                              Stornieren
+                          </button>
+                          <button
+                              onClick={async () => {
+                                  if (bookingToDelete === null) return;
 
-                    </div>
-                </div>
-            </div>
-        )}
-    </div>
+                                  await markNoShow(bookingToDelete);
+                                  setBookingToDelete(null);
+                                  await onBookingCreated();
+                              }}
+                              style={{
+                                  background: "#f59e0b",
+                                  color: "white",
+                                  borderRadius: "6px",
+                                  padding: "6px 10px",
+                                  border: "none",
+                                  cursor: "pointer",
+                              }}
+                          >
+                              Nicht erschienen
+                          </button>
+
+                      </div>
+                  </div>
+              </div>
+          )}
+      </div>
   );
 }
 
@@ -745,278 +745,278 @@ const emptyIconStyle: React.CSSProperties = {
 };
 
 const emptyTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "1.1rem",
-  color: "#163126",
+    margin: 0,
+    fontSize: "1.1rem",
+    color: "#163126",
 };
 
 const emptyTextStyle: React.CSSProperties = {
-  margin: "0.5rem auto 0 auto",
-  maxWidth: "520px",
-  color: "#5f766b",
-  lineHeight: 1.5,
+    margin: "0.5rem auto 0 auto",
+    maxWidth: "520px",
+    color: "#5f766b",
+    lineHeight: 1.5,
 };
 
 const heroSectionStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "1rem",
-  flexWrap: "wrap",
-  padding: "1rem 1.1rem",
-  borderRadius: "1rem",
-  border: "1px solid #d7e4db",
-  background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "1rem",
+    flexWrap: "wrap",
+    padding: "1rem 1.1rem",
+    borderRadius: "1rem",
+    border: "1px solid #d7e4db",
+    background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
 };
 
 const heroLeftStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.45rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.45rem",
 };
 
 const eyebrowStyle: React.CSSProperties = {
-  fontSize: "0.8rem",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  color: "#166534",
+    fontSize: "0.8rem",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    color: "#166534",
 };
 
 const heroTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "1.5rem",
-  lineHeight: 1.15,
-  color: "#163126",
+    margin: 0,
+    fontSize: "1.5rem",
+    lineHeight: 1.15,
+    color: "#163126",
 };
 
 const metaRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "0.5rem",
-  flexWrap: "wrap",
+    display: "flex",
+    gap: "0.5rem",
+    flexWrap: "wrap",
 };
 
 const metaBadgeStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "0.38rem 0.7rem",
-  borderRadius: "999px",
-  backgroundColor: "#ffffff",
-  border: "1px solid #d7e4db",
-  color: "#355447",
-  fontSize: "0.9rem",
-  fontWeight: 600,
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "0.38rem 0.7rem",
+    borderRadius: "999px",
+    backgroundColor: "#ffffff",
+    border: "1px solid #d7e4db",
+    color: "#355447",
+    fontSize: "0.9rem",
+    fontWeight: 600,
 };
 
 const statusPillStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "0.75rem 0.95rem",
-  borderRadius: "0.9rem",
-  border: "1px solid transparent",
-  fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "0.75rem 0.95rem",
+    borderRadius: "0.9rem",
+    border: "1px solid transparent",
+    fontWeight: 700,
 };
 
 const statsGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "0.85rem",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "0.85rem",
 };
 
 const statCardStyle: React.CSSProperties = {
-  padding: "0.95rem 1rem",
-  borderRadius: "1rem",
-  backgroundColor: "#ffffff",
-  border: "1px solid #d7e4db",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+    padding: "0.95rem 1rem",
+    borderRadius: "1rem",
+    backgroundColor: "#ffffff",
+    border: "1px solid #d7e4db",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
 };
 
 const statLabelStyle: React.CSSProperties = {
-  fontSize: "0.86rem",
-  color: "#5f766b",
-  marginBottom: "0.4rem",
-  fontWeight: 600,
+    fontSize: "0.86rem",
+    color: "#5f766b",
+    marginBottom: "0.4rem",
+    fontWeight: 600,
 };
 
 const statValueStyle: React.CSSProperties = {
-  fontSize: "1.45rem",
-  fontWeight: 800,
-  color: "#163126",
+    fontSize: "1.45rem",
+    fontWeight: 800,
+    color: "#163126",
 };
 
 const statValueStyleSmall: React.CSSProperties = {
-  fontSize: "1.08rem",
-  fontWeight: 800,
-  color: "#163126",
+    fontSize: "1.08rem",
+    fontWeight: 800,
+    color: "#163126",
 };
 
 const statHelpStyle: React.CSSProperties = {
-  marginTop: "0.35rem",
-  fontSize: "0.86rem",
-  color: "#6b7280",
-  lineHeight: 1.4,
+    marginTop: "0.35rem",
+    fontSize: "0.86rem",
+    color: "#6b7280",
+    lineHeight: 1.4,
 };
 
 const panelStyle: React.CSSProperties = {
-  padding: "1rem",
-  borderRadius: "1rem",
-  border: "1px solid #d7e4db",
-  backgroundColor: "#ffffff",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
+    padding: "1rem",
+    borderRadius: "1rem",
+    border: "1px solid #d7e4db",
+    backgroundColor: "#ffffff",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
 };
 
 const sectionHeaderStyle: React.CSSProperties = {
-  marginBottom: "0.9rem",
+    marginBottom: "0.9rem",
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "1.05rem",
-  fontWeight: 800,
-  color: "#163126",
+    margin: 0,
+    fontSize: "1.05rem",
+    fontWeight: 800,
+    color: "#163126",
 };
 
 const sectionSubtitleStyle: React.CSSProperties = {
-  margin: "0.3rem 0 0 0",
-  color: "#5f766b",
-  fontSize: "0.94rem",
+    margin: "0.3rem 0 0 0",
+    color: "#5f766b",
+    fontSize: "0.94rem",
 };
 
 const formGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "0.85rem",
-  alignItems: "end",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "0.85rem",
+    alignItems: "end",
 };
 
 const formGridWideStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "0.85rem",
-  alignItems: "end",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "0.85rem",
+    alignItems: "end",
 };
 
 const buttonFieldStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "end",
+    display: "flex",
+    alignItems: "end",
 };
 
 const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "0.9rem",
-  marginBottom: "0.35rem",
-  color: "#5f766b",
-  fontWeight: 600,
+    display: "block",
+    fontSize: "0.9rem",
+    marginBottom: "0.35rem",
+    color: "#5f766b",
+    fontWeight: 600,
 };
 
 const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.72rem 0.82rem",
-  border: "1px solid #bfd4c7",
-  borderRadius: "0.75rem",
-  backgroundColor: "#ffffff",
-  color: "#163126",
-  boxSizing: "border-box",
-  outline: "none",
+    width: "100%",
+    padding: "0.72rem 0.82rem",
+    border: "1px solid #bfd4c7",
+    borderRadius: "0.75rem",
+    backgroundColor: "#ffffff",
+    color: "#163126",
+    boxSizing: "border-box",
+    outline: "none",
 };
 
 const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.78rem 1.05rem",
-  borderRadius: "0.75rem",
-  border: "1px solid #15803d",
-  background: "linear-gradient(135deg, #15803d 0%, #166534 100%)",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: 700,
-  boxShadow: "0 8px 18px rgba(21, 128, 61, 0.20)",
+    padding: "0.78rem 1.05rem",
+    borderRadius: "0.75rem",
+    border: "1px solid #15803d",
+    background: "linear-gradient(135deg, #15803d 0%, #166534 100%)",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 8px 18px rgba(21, 128, 61, 0.20)",
 };
 
 const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.72rem 1rem",
-  borderRadius: "0.75rem",
-  border: "1px solid #bfd4c7",
-  backgroundColor: "#ffffff",
-  color: "#163126",
-  cursor: "pointer",
-  fontWeight: 600,
+    padding: "0.72rem 1rem",
+    borderRadius: "0.75rem",
+    border: "1px solid #bfd4c7",
+    backgroundColor: "#ffffff",
+    color: "#163126",
+    cursor: "pointer",
+    fontWeight: 600,
 };
 
 const dangerButtonStyle: React.CSSProperties = {
-  padding: "0.72rem 1rem",
-  borderRadius: "0.75rem",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: 700,
+    padding: "0.72rem 1rem",
+    borderRadius: "0.75rem",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 700,
 };
 
 const innerSurfaceStyle: React.CSSProperties = {
-  padding: "0.85rem",
-  borderRadius: "0.85rem",
-  backgroundColor: "#f8fafc",
-  border: "1px solid #e5e7eb",
+    padding: "0.85rem",
+    borderRadius: "0.85rem",
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e5e7eb",
 };
 
 const infoBoxStyle: React.CSSProperties = {
-  marginTop: "0.9rem",
-  padding: "0.8rem 0.95rem",
-  borderRadius: "0.8rem",
-  border: "1px solid transparent",
-  fontSize: "0.95rem",
-  lineHeight: 1.45,
+    marginTop: "0.9rem",
+    padding: "0.8rem 0.95rem",
+    borderRadius: "0.8rem",
+    border: "1px solid transparent",
+    fontSize: "0.95rem",
+    lineHeight: 1.45,
 };
 
 const modalOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.35)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-  padding: "1rem",
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    padding: "1rem",
 };
 
 const modalCardStyle: React.CSSProperties = {
-  backgroundColor: "white",
-  borderRadius: "1rem",
-  padding: "1.25rem",
-  width: "100%",
-  maxWidth: "420px",
-  boxShadow: "0 16px 40px rgba(0,0,0,0.2)",
-  border: "1px solid #e5e7eb",
+    backgroundColor: "white",
+    borderRadius: "1rem",
+    padding: "1.25rem",
+    width: "100%",
+    maxWidth: "420px",
+    boxShadow: "0 16px 40px rgba(0,0,0,0.2)",
+    border: "1px solid #e5e7eb",
 };
 
 const modalButtonRowStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: "0.75rem",
-  flexWrap: "wrap",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "0.75rem",
+    flexWrap: "wrap",
 };
 
 const quickActionWrapperStyle: React.CSSProperties = {
-  marginBottom: "1rem",
+    marginBottom: "1rem",
 };
 
 const quickActionLabelStyle: React.CSSProperties = {
-  fontSize: "0.86rem",
-  fontWeight: 700,
-  color: "#5f766b",
-  marginBottom: "0.45rem",
+    fontSize: "0.86rem",
+    fontWeight: 700,
+    color: "#5f766b",
+    marginBottom: "0.45rem",
 };
 
 const quickActionRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "0.55rem",
-  flexWrap: "wrap",
+    display: "flex",
+    gap: "0.55rem",
+    flexWrap: "wrap",
 };
 
 const quickActionButtonStyle: React.CSSProperties = {
-  padding: "0.5rem 0.75rem",
-  borderRadius: "999px",
-  border: "1px solid #bfd4c7",
-  backgroundColor: "#ffffff",
-  color: "#355447",
-  cursor: "pointer",
-  fontSize: "0.82rem",
-  fontWeight: 700,
+    padding: "0.5rem 0.75rem",
+    borderRadius: "999px",
+    border: "1px solid #bfd4c7",
+    backgroundColor: "#ffffff",
+    color: "#355447",
+    cursor: "pointer",
+    fontSize: "0.82rem",
+    fontWeight: 700,
 };
