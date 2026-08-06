@@ -46,6 +46,14 @@ class BookingBase(BaseModel):
 class BookingCreate(BookingBase):
     place_id: int
 
+class BookingUpdate(BaseModel):
+    place_id: int
+    start_date: date
+    end_date: date
+    guest_name: str
+    vehicle_size: str | None = None
+    notes: str | None = None
+
 
 class BookingRead(BookingBase):
     id: int

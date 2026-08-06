@@ -317,6 +317,119 @@ def delete_user(
 
     return {"message": "Benutzer gelöscht"}
 
+@app.put("/bookings/{booking_id}", response_model=schemas.BookingRead)
+def update_booking(
+    booking_id: int,
+    updated: schemas.BookingUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_authenticated_user),
+):
+    booking = (
+        db.query(models.Booking)
+        .filter(models.Booking.id == booking_id)
+        .first()
+    )
+
+    if booking is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Buchung nicht gefunden"
+        )
+
+    place = (
+        db.query(models.Place)
+        .filter(models.Place.id == updated.place_id)
+        .first()
+    )
+
+    if place is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Platz nicht gefunden"
+        )
+
+    if updated.start_date >= updated.end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Das Abreisedatum muss nach dem Anreisedatum liegen"
+        )
+
+    if not updated.guest_name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Bitte einen Gastnamen eingeben"
+        )
+
+    if place.type in ["Dauercamper", "Gesperrt"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Dieser Platz kann nicht gebucht werden"
+        )
+
+    # Bei Stellplätzen Fahrzeuglänge prüfen
+    if (
+        place.type != "Zeltwiese"
+        and updated.vehicle_size
+        and place.length_m is not None
+    ):
+        try:
+            vehicle_length = float(
+                updated.vehicle_size
+                .lower()
+                .replace("m", "")
+                .replace(",", ".")
+                .strip()
+            )
+
+            if vehicle_length > place.length_m:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Das Fahrzeug ist zu lang. "
+                        f"Dieser Platz ist maximal {place.length_m} m lang."
+                    ),
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Bitte eine gültige Fahrzeuglänge eingeben"
+            )
+
+    # Die bearbeitete Buchung selbst nicht als Konflikt berücksichtigen
+    overlapping_bookings = (
+        db.query(models.Booking)
+        .filter(
+            models.Booking.place_id == updated.place_id,
+            models.Booking.id != booking_id,
+            updated.start_date < models.Booking.end_date,
+            updated.end_date > models.Booking.start_date,
+        )
+        .all()
+    )
+
+    if would_exceed_capacity(
+        place=place,
+        existing_bookings=overlapping_bookings,
+        start_date=updated.start_date,
+        end_date=updated.end_date,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Der Platz ist in diesem Zeitraum bereits voll belegt"
+        )
+
+    booking.place_id = updated.place_id
+    booking.start_date = updated.start_date
+    booking.end_date = updated.end_date
+    booking.guest_name = updated.guest_name.strip()
+    booking.vehicle_size = updated.vehicle_size
+    booking.notes = updated.notes
+
+    db.commit()
+    db.refresh(booking)
+
+    return booking
+
 @app.get("/users", response_model=list[schemas.UserRead])
 def list_users(
     db: Session = Depends(get_db),

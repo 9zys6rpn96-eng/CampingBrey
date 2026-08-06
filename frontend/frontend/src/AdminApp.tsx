@@ -609,6 +609,7 @@ async function reloadData() {
                 <BookingOverview
                   bookings={bookings}
                   places={places}
+                  onBookingUpdated={reloadData}
                 />
               </main>
             </div>

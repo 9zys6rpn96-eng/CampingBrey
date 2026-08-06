@@ -231,3 +231,36 @@ export async function deleteUser(userId: number) {
 
   return res.json();
 }
+
+export async function updateBooking(
+  bookingId: number,
+  data: {
+    place_id: number;
+    start_date: string;
+    end_date: string;
+    guest_name: string;
+    vehicle_size: string;
+    notes: string;
+  }
+) {
+  const token = getAuthToken();
+
+  const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+
+    throw new Error(
+      errorData.detail || "Fehler beim Bearbeiten der Buchung"
+    );
+  }
+
+  return res.json();
+}

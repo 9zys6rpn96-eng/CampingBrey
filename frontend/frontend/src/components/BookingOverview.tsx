@@ -1,8 +1,11 @@
+import { useMemo, useState } from "react";
 import type { Booking, Place } from "../types";
+import { updateBooking } from "../services/api";
 
 interface BookingOverviewProps {
   bookings: Booking[];
   places: Place[];
+  onBookingUpdated: () => void | Promise<void>;
 }
 
 function parseLocalDate(dateString: string) {
@@ -39,14 +42,123 @@ function escapeCsvValue(value: string | number | null | undefined) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-export function BookingOverview({ bookings, places }: BookingOverviewProps) {
-  const sortedBookings = [...bookings].sort((a, b) =>
-    a.start_date.localeCompare(b.start_date)
-  );
+export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOverviewProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editPlaceId, setEditPlaceId] = useState<number | null>(null);
+  const [editGuestName, setEditGuestName] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editVehicleSize, setEditVehicleSize] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const sortedBookings = useMemo(
+  () =>
+    [...bookings].sort((a, b) =>
+      a.start_date.localeCompare(b.start_date)
+    ),
+  [bookings]
+);
 
   function getPlaceName(placeId: number) {
     return places.find((p) => p.id === placeId)?.name ?? `ID ${placeId}`;
   }
+
+  const filteredBookings = useMemo(() => {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  if (!normalizedSearch) {
+    return sortedBookings;
+  }
+
+  return sortedBookings.filter((booking) => {
+    const placeName = getPlaceName(booking.place_id);
+
+    const searchableText = [
+      booking.guest_name,
+      placeName,
+      `Platz ${placeName}`,
+      booking.vehicle_size,
+      booking.notes,
+      booking.created_by,
+      getStatusLabel(booking.status),
+      booking.start_date,
+      booking.end_date,
+      formatDate(booking.start_date),
+      formatDate(booking.end_date),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(normalizedSearch);
+  });
+}, [searchTerm, sortedBookings, places]);
+
+  function openEditDialog(booking: Booking) {
+  setEditingBooking(booking);
+  setEditPlaceId(booking.place_id);
+  setEditGuestName(booking.guest_name);
+  setEditStartDate(booking.start_date);
+  setEditEndDate(booking.end_date);
+  setEditVehicleSize(booking.vehicle_size || "");
+  setEditNotes(booking.notes || "");
+  setEditError(null);
+}
+
+function closeEditDialog() {
+  setEditingBooking(null);
+  setEditPlaceId(null);
+  setEditGuestName("");
+  setEditStartDate("");
+  setEditEndDate("");
+  setEditVehicleSize("");
+  setEditNotes("");
+  setEditError(null);
+}
+
+async function handleSaveBooking() {
+  if (!editingBooking || editPlaceId === null) {
+    return;
+  }
+
+  if (!editGuestName.trim()) {
+    setEditError("Bitte einen Gastnamen eingeben.");
+    return;
+  }
+
+  if (!editStartDate || !editEndDate) {
+    setEditError("Bitte Anreise und Abreise auswählen.");
+    return;
+  }
+
+  if (editStartDate >= editEndDate) {
+    setEditError("Die Abreise muss nach der Anreise liegen.");
+    return;
+  }
+
+  try {
+    setEditSaving(true);
+    setEditError(null);
+
+    await updateBooking(editingBooking.id, {
+      place_id: editPlaceId,
+      start_date: editStartDate,
+      end_date: editEndDate,
+      guest_name: editGuestName.trim(),
+      vehicle_size: editVehicleSize.trim(),
+      notes: editNotes.trim(),
+    });
+
+    await onBookingUpdated();
+    closeEditDialog();
+  } catch (err: any) {
+    setEditError(err.message || "Fehler beim Bearbeiten der Buchung");
+  } finally {
+    setEditSaving(false);
+  }
+}
 
   function exportCsv() {
     const rows = [
@@ -58,9 +170,10 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
         "Nächte",
         "Fahrzeuggröße",
         "Notizen",
+        "Erstellt von",
         "Status",
       ],
-      ...sortedBookings.map((booking) => [
+      ...filteredBookings.map((booking) => [
         getPlaceName(booking.place_id),
         booking.guest_name,
         formatDate(booking.start_date),
@@ -68,6 +181,7 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
         getStayLength(booking.start_date, booking.end_date),
         booking.vehicle_size || "",
         booking.notes || "",
+        booking.created_by || "",
         getStatusLabel(booking.status),
       ]),
     ];
@@ -91,77 +205,232 @@ export function BookingOverview({ bookings, places }: BookingOverviewProps) {
   }
 
   return (
-    <section style={cardStyle}>
-      <div style={headerStyle}>
+      <section style={cardStyle}>
+        <div style={headerStyle}>
+          <div>
+            <h2 style={titleStyle}>Alle Buchungen</h2>
+            <p style={subtitleStyle}>
+              Chronologische Übersicht aller aktuellen Buchungen.
+            </p>
+          </div>
+
+          <button
+              onClick={exportCsv}
+              disabled={filteredBookings.length === 0}
+              style={{
+                ...exportButtonStyle,
+                opacity: filteredBookings.length === 0 ? 0.55 : 1,
+                cursor: filteredBookings.length === 0 ? "not-allowed" : "pointer",
+              }}
+          >
+            CSV exportieren
+          </button>
+        </div>
+
+        <div style={searchWrapperStyle}>
+          <label style={searchLabelStyle}>
+            Buchungen durchsuchen
+          </label>
+
+          <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Gast, Platz, Ersteller, Notiz oder Status suchen …"
+              style={searchInputStyle}
+          />
+
+          {searchTerm.trim() && (
+              <div style={searchResultStyle}>
+                {filteredBookings.length} Buchung(en) gefunden
+              </div>
+          )}
+        </div>
+
+        {sortedBookings.length === 0 ? (
+          <div style={emptyStyle}>Noch keine Buchungen vorhanden.</div>
+        ) : filteredBookings.length === 0 ? (
+          <div style={emptyStyle}>
+            Keine passenden Buchungen gefunden.
+          </div>
+        ) : (
+            <div style={tableWrapperStyle}>
+              <table style={tableStyle}>
+                <thead>
+                <tr>
+                  <th style={thStyle}>Von</th>
+                  <th style={thStyle}>Bis</th>
+                  <th style={thStyle}>Platz</th>
+                  <th style={thStyle}>Gast</th>
+                  <th style={thStyle}>Nächte</th>
+                  <th style={thStyle}>Fahrzeuglänge / Zeltgröße</th>
+                  <th style={thStyle}>Notizen</th>
+                  <th style={thStyle}>Erstellt von</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Aktion</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                {filteredBookings.map((booking) => (
+                    <tr key={booking.id}>
+                      <td style={tdStyle}>{formatDate(booking.start_date)}</td>
+                      <td style={tdStyle}>{formatDate(booking.end_date)}</td>
+
+                      <td style={tdStyle}>
+                        <strong>Platz {getPlaceName(booking.place_id)}</strong>
+                      </td>
+
+                      <td style={tdStyle}>{booking.guest_name}</td>
+
+                      <td style={tdStyle}>
+                        {getStayLength(booking.start_date, booking.end_date)}
+                      </td>
+
+                      <td style={tdStyle}>{booking.vehicle_size || "–"}</td>
+
+                      <td style={tdStyle}>{booking.notes || "–"}</td>
+
+                      <td style={tdStyle}>{booking.created_by || "Unbekannt"}</td>
+
+                      <td style={tdStyle}>{getStatusLabel(booking.status)}</td>
+
+                      <td style={tdStyle}>
+                        <button
+                            type="button"
+                            onClick={() => openEditDialog(booking)}
+                            style={editButtonStyle}
+                        >
+                          Bearbeiten
+                        </button>
+                      </td>
+                    </tr>
+                ))}
+                </tbody>
+              </table>
+            </div>
+        )}
+        {editingBooking && (
+  <div style={modalOverlayStyle}>
+    <div style={modalCardStyle}>
+      <div style={modalHeaderStyle}>
         <div>
-          <h2 style={titleStyle}>Alle Buchungen</h2>
-          <p style={subtitleStyle}>
-            Chronologische Übersicht aller aktuellen Buchungen.
+          <h3 style={modalTitleStyle}>Buchung bearbeiten</h3>
+          <p style={modalSubtitleStyle}>
+            Buchung #{editingBooking.id} anpassen.
           </p>
         </div>
 
         <button
-          onClick={exportCsv}
-          disabled={sortedBookings.length === 0}
-          style={{
-            ...exportButtonStyle,
-            opacity: sortedBookings.length === 0 ? 0.55 : 1,
-            cursor: sortedBookings.length === 0 ? "not-allowed" : "pointer",
-          }}
+          type="button"
+          onClick={closeEditDialog}
+          style={closeButtonStyle}
+          aria-label="Dialog schließen"
         >
-          CSV exportieren
+          ✕
         </button>
       </div>
 
-      {sortedBookings.length === 0 ? (
-        <div style={emptyStyle}>Noch keine Buchungen vorhanden.</div>
-      ) : (
-        <div style={tableWrapperStyle}>
-          <table style={tableStyle}>
-            <thead>
-            <tr>
-              <th style={thStyle}>Von</th>
-              <th style={thStyle}>Bis</th>
-              <th style={thStyle}>Platz</th>
-              <th style={thStyle}>Gast</th>
-              <th style={thStyle}>Nächte</th>
-              <th style={thStyle}>Fahrzeuglänge / Zeltgröße</th>
-              <th style={thStyle}>Notizen</th>
-              <th style={thStyle}>Erstellt von</th>
-              <th style={thStyle}>Status</th>
-            </tr>
-            </thead>
+      <div style={editFormGridStyle}>
+        <div>
+          <label style={formLabelStyle}>Platz</label>
+          <select
+            value={editPlaceId ?? ""}
+            onChange={(e) => setEditPlaceId(Number(e.target.value))}
+            style={formInputStyle}
+          >
+            {places.map((place) => (
+              <option key={place.id} value={place.id}>
+                Platz {place.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <tbody>
-              {sortedBookings.map((booking) => (
-                  <tr key={booking.id}>
-                    <td style={tdStyle}>{formatDate(booking.start_date)}</td>
-                    <td style={tdStyle}>{formatDate(booking.end_date)}</td>
+        <div>
+          <label style={formLabelStyle}>Gastname</label>
+          <input
+            value={editGuestName}
+            onChange={(e) => setEditGuestName(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
 
-                    <td style={tdStyle}>
-                      <strong>Platz {getPlaceName(booking.place_id)}</strong>
-                    </td>
+        <div>
+          <label style={formLabelStyle}>Anreise</label>
+          <input
+            type="date"
+            value={editStartDate}
+            onChange={(e) => setEditStartDate(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
 
-                    <td style={tdStyle}>{booking.guest_name}</td>
+        <div>
+          <label style={formLabelStyle}>Abreise</label>
+          <input
+            type="date"
+            value={editEndDate}
+            onChange={(e) => setEditEndDate(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
 
-                    <td style={tdStyle}>
-                      {getStayLength(booking.start_date, booking.end_date)}
-                    </td>
+        <div>
+          <label style={formLabelStyle}>
+            Fahrzeuglänge / Zeltgröße
+          </label>
+          <input
+            value={editVehicleSize}
+            onChange={(e) => setEditVehicleSize(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
 
-                    <td style={tdStyle}>{booking.vehicle_size || "–"}</td>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={formLabelStyle}>Notizen</label>
+          <textarea
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            style={formTextareaStyle}
+            rows={4}
+          />
+        </div>
+      </div>
 
-                    <td style={tdStyle}>{booking.notes || "–"}</td>
-
-                    <td style={tdStyle}>{booking.created_by || "Unbekannt"}</td>
-
-                    <td style={tdStyle}>{getStatusLabel(booking.status)}</td>
-                  </tr>
-              ))}
-            </tbody>
-          </table>
+      {editError && (
+        <div style={modalErrorStyle}>
+          {editError}
         </div>
       )}
-    </section>
+
+      <div style={modalActionsStyle}>
+        <button
+          type="button"
+          onClick={closeEditDialog}
+          disabled={editSaving}
+          style={cancelButtonStyle}
+        >
+          Abbrechen
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSaveBooking}
+          disabled={editSaving}
+          style={{
+            ...saveButtonStyle,
+            opacity: editSaving ? 0.65 : 1,
+            cursor: editSaving ? "not-allowed" : "pointer",
+          }}
+        >
+          {editSaving ? "Speichert …" : "Änderungen speichern"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+      </section>
   );
 }
 
@@ -239,4 +508,161 @@ const tdStyle: React.CSSProperties = {
   borderBottom: "1px solid #eef2f7",
   color: "#163126",
   verticalAlign: "top",
+};
+
+const searchWrapperStyle: React.CSSProperties = {
+  marginBottom: "1rem",
+};
+
+const searchLabelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: "0.4rem",
+  color: "#5f766b",
+  fontSize: "0.9rem",
+  fontWeight: 700,
+};
+
+const searchInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "0.75rem 0.9rem",
+  border: "1px solid #bfd4c7",
+  borderRadius: "0.75rem",
+  backgroundColor: "#ffffff",
+  color: "#163126",
+  boxSizing: "border-box",
+  outline: "none",
+};
+
+const searchResultStyle: React.CSSProperties = {
+  marginTop: "0.4rem",
+  color: "#6b7280",
+  fontSize: "0.85rem",
+};
+
+const editButtonStyle: React.CSSProperties = {
+  padding: "0.45rem 0.7rem",
+  borderRadius: "0.6rem",
+  border: "1px solid #bfd4c7",
+  backgroundColor: "#ffffff",
+  color: "#166534",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
+
+const modalOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1000,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "1rem",
+  backgroundColor: "rgba(15, 23, 42, 0.45)",
+};
+
+const modalCardStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "720px",
+  maxHeight: "90vh",
+  overflowY: "auto",
+  padding: "1.25rem",
+  borderRadius: "1rem",
+  backgroundColor: "#ffffff",
+  border: "1px solid #d7e4db",
+  boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+};
+
+const modalHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "1rem",
+  marginBottom: "1rem",
+};
+
+const modalTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: "1.2rem",
+  color: "#163126",
+};
+
+const modalSubtitleStyle: React.CSSProperties = {
+  margin: "0.3rem 0 0 0",
+  color: "#6b7280",
+};
+
+const closeButtonStyle: React.CSSProperties = {
+  border: "none",
+  backgroundColor: "transparent",
+  color: "#6b7280",
+  cursor: "pointer",
+  fontSize: "1.1rem",
+  padding: "0.25rem",
+};
+
+const editFormGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "0.9rem",
+};
+
+const formLabelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: "0.35rem",
+  color: "#5f766b",
+  fontSize: "0.9rem",
+  fontWeight: 700,
+};
+
+const formInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "0.72rem 0.82rem",
+  border: "1px solid #bfd4c7",
+  borderRadius: "0.75rem",
+  backgroundColor: "#ffffff",
+  color: "#163126",
+  boxSizing: "border-box",
+};
+
+const formTextareaStyle: React.CSSProperties = {
+  ...formInputStyle,
+  resize: "vertical",
+  fontFamily: "inherit",
+};
+
+const modalErrorStyle: React.CSSProperties = {
+  marginTop: "1rem",
+  padding: "0.75rem 0.9rem",
+  borderRadius: "0.75rem",
+  backgroundColor: "#fee2e2",
+  border: "1px solid #fecaca",
+  color: "#991b1b",
+};
+
+const modalActionsStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "0.75rem",
+  flexWrap: "wrap",
+  marginTop: "1.2rem",
+};
+
+const cancelButtonStyle: React.CSSProperties = {
+  padding: "0.72rem 1rem",
+  borderRadius: "0.75rem",
+  border: "1px solid #bfd4c7",
+  backgroundColor: "#ffffff",
+  color: "#163126",
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const saveButtonStyle: React.CSSProperties = {
+  padding: "0.72rem 1rem",
+  borderRadius: "0.75rem",
+  border: "1px solid #15803d",
+  background: "linear-gradient(135deg, #15803d 0%, #166534 100%)",
+  color: "#ffffff",
+  fontWeight: 700,
 };
