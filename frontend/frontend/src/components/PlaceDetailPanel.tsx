@@ -3,6 +3,7 @@ import type { Place, Booking } from "../types";
 import { BookingList } from "./BookingList";
 import { BookingTimeline } from "./BookingTimeline";
 import { createBooking, deleteBooking, updatePlace, markNoShow } from "../services/api";
+import { useViewport } from "../hooks/useViewport";
 
 interface Props {
   place: Place | null;
@@ -107,6 +108,7 @@ const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese", "Gesperrt"
 const CUSTOM_PLACE_TYPE = "__custom__";
 
 export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces, initialStartDate = "", initialEndDate = "", initialVehicleLengthM = "", onBookingFinished, showBookingForm = true, }: Props) {
+  const { isMobile, isTablet } = useViewport();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -333,7 +335,13 @@ const isTentAreaFull =
 
   return (
       <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
-          <section style={heroSectionStyle}>
+          <section
+            style={{
+              ...heroSectionStyle,
+              flexDirection: isMobile ? "column" : heroSectionStyle.flexDirection,
+              alignItems: isMobile ? "stretch" : heroSectionStyle.alignItems,
+            }}
+          >
               <div style={heroLeftStyle}>
                   <div style={eyebrowStyle}>Ausgewählter Platz</div>
 
@@ -357,6 +365,7 @@ const isTentAreaFull =
               <div
                   style={{
                       ...statusPillStyle,
+                      width: isMobile ? "100%" : "auto",
 
                       backgroundColor: isBlockedPlace
                           ? "#fef3c7"
@@ -423,7 +432,12 @@ const isTentAreaFull =
               <div style={quickActionWrapperStyle}>
                   <div style={quickActionLabelStyle}>Schnellauswahl</div>
 
-                  <div style={quickActionRowStyle}>
+                  <div
+                    style={{
+                      ...quickActionRowStyle,
+                      flexDirection: isMobile ? "column" : quickActionRowStyle.flexDirection,
+                    }}
+                  >
                       <button
                           type="button"
                           onClick={() => {
@@ -472,7 +486,16 @@ const isTentAreaFull =
                   </div>
               </div>
 
-              <div style={formGridWideStyle}>
+              <div
+                style={{
+                  ...formGridWideStyle,
+                  gridTemplateColumns: isMobile
+                    ? "1fr"
+                    : isTablet
+                      ? "repeat(2, minmax(0, 1fr))"
+                      : formGridWideStyle.gridTemplateColumns,
+                }}
+              >
                   <div>
                       <label style={labelStyle}>Name</label>
                       <input
@@ -613,7 +636,16 @@ const isTentAreaFull =
           </section>
           )}
 
-          <section style={statsGridStyle}>
+          <section
+            style={{
+              ...statsGridStyle,
+              gridTemplateColumns: isMobile
+                ? "1fr"
+                : isTablet
+                  ? "repeat(2, minmax(0, 1fr))"
+                  : statsGridStyle.gridTemplateColumns,
+            }}
+          >
               <div style={statCardStyle}>
                   <div style={statLabelStyle}>
                       {isTentArea ? "Aktuelle Zeltbelegung" : "Aktuelle Belegung"}
@@ -659,7 +691,16 @@ const isTentAreaFull =
                       </div>
                   </div>
 
-                  <div style={formGridStyle}>
+                  <div
+                    style={{
+                      ...formGridStyle,
+                      gridTemplateColumns: isMobile
+                        ? "1fr"
+                        : isTablet
+                          ? "repeat(2, minmax(0, 1fr))"
+                          : formGridStyle.gridTemplateColumns,
+                    }}
+                  >
                       <div>
                           <label style={labelStyle}>Name / Nummer</label>
                           <input
@@ -852,6 +893,24 @@ const heroSectionStyle: React.CSSProperties = {
     background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
 };
 
+const quickActionWrapperStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.65rem",
+};
+
+const quickActionLabelStyle: React.CSSProperties = {
+    fontSize: "0.85rem",
+    fontWeight: 700,
+    color: "#5f766b",
+};
+
+const quickActionRowStyle: React.CSSProperties = {
+    display: "flex",
+    gap: "0.55rem",
+    flexWrap: "wrap",
+};
+
 const heroLeftStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -904,6 +963,25 @@ const statsGridStyle: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
     gap: "0.85rem",
+};
+
+const formGridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "0.85rem",
+    alignItems: "end",
+};
+
+const formGridWideStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "0.85rem",
+    alignItems: "end",
+};
+
+const buttonFieldStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "end",
 };
 
 const statCardStyle: React.CSSProperties = {
@@ -963,25 +1041,6 @@ const sectionSubtitleStyle: React.CSSProperties = {
     margin: "0.3rem 0 0 0",
     color: "#5f766b",
     fontSize: "0.94rem",
-};
-
-const formGridStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: "0.85rem",
-    alignItems: "end",
-};
-
-const formGridWideStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: "0.85rem",
-    alignItems: "end",
-};
-
-const buttonFieldStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "end",
 };
 
 const labelStyle: React.CSSProperties = {
@@ -1073,23 +1132,6 @@ const modalButtonRowStyle: React.CSSProperties = {
     display: "flex",
     justifyContent: "flex-end",
     gap: "0.75rem",
-    flexWrap: "wrap",
-};
-
-const quickActionWrapperStyle: React.CSSProperties = {
-    marginBottom: "1rem",
-};
-
-const quickActionLabelStyle: React.CSSProperties = {
-    fontSize: "0.86rem",
-    fontWeight: 700,
-    color: "#5f766b",
-    marginBottom: "0.45rem",
-};
-
-const quickActionRowStyle: React.CSSProperties = {
-    display: "flex",
-    gap: "0.55rem",
     flexWrap: "wrap",
 };
 

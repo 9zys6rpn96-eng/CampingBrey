@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useViewport } from "../hooks/useViewport";
 import type { Place, PlaceStatus } from "../types";
 
 interface PlaceListProps {
@@ -57,6 +58,7 @@ export function PlaceList({
 }: PlaceListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<PlaceFilter>("all");
+  const { isMobile } = useViewport();
 
   const filteredPlaces = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -93,7 +95,12 @@ export function PlaceList({
 
         <div>
           <div style={searchLabelStyle}>Filter</div>
-          <div style={filterRowStyle}>
+          <div
+            style={{
+              ...filterRowStyle,
+              flexDirection: isMobile ? "column" : "row",
+            }}
+          >
             <button
               onClick={() => setActiveFilter("all")}
               style={{
@@ -166,7 +173,7 @@ export function PlaceList({
             const status = placeStatuses.find((s) => s.id === place.id);
 
             return (
-              <button
+                <button
                 key={place.id}
                 onClick={() => onSelect(place.id)}
                 onMouseUp={(e) => e.currentTarget.blur()}
@@ -175,7 +182,13 @@ export function PlaceList({
                   ...(isSelected ? selectedPlaceButtonStyle : {}),
                 }}
               >
-                <div style={placeTopRowStyle}>
+                  <div
+                    style={{
+                      ...placeTopRowStyle,
+                      flexDirection: isMobile ? "column" : "row",
+                      alignItems: isMobile ? "stretch" : "flex-start",
+                    }}
+                  >
                   <div style={placeNameBlockStyle}>
                     <div
                       style={{
@@ -196,7 +209,7 @@ export function PlaceList({
                     </div>
                   </div>
 
-                  <div
+                    <div
                     style={{
                       ...capacityBadgeStyle,
                       ...(isSelected ? selectedCapacityBadgeStyle : {}),

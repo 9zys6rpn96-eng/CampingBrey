@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Booking, Place } from "../types";
 import { updateBooking } from "../services/api";
+import { useViewport } from "../hooks/useViewport";
 
 interface BookingOverviewProps {
   bookings: Booking[];
@@ -54,6 +55,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const [editTentCount, setEditTentCount] = useState("1");
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const { isMobile, isTablet } = useViewport();
   const sortedBookings = useMemo(
   () =>
     [...bookings].sort((a, b) =>
@@ -212,7 +214,13 @@ async function handleSaveBooking() {
 
   return (
       <section style={cardStyle}>
-        <div style={headerStyle}>
+        <div
+          style={{
+            ...headerStyle,
+            flexDirection: isMobile ? "column" : "row",
+            alignItems: isMobile ? "stretch" : "center",
+          }}
+        >
           <div>
             <h2 style={titleStyle}>Alle Buchungen</h2>
             <p style={subtitleStyle}>
@@ -337,7 +345,16 @@ async function handleSaveBooking() {
         </button>
       </div>
 
-      <div style={editFormGridStyle}>
+        <div
+          style={{
+            ...editFormGridStyle,
+            gridTemplateColumns: isMobile
+              ? "1fr"
+              : isTablet
+                ? "repeat(2, minmax(0, 1fr))"
+                : editFormGridStyle.gridTemplateColumns,
+          }}
+        >
         <div>
           <label style={formLabelStyle}>Platz</label>
           <select

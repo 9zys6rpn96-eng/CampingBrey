@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Place, PlaceStatus, Booking } from "../types";
+import { useViewport } from "../hooks/useViewport";
 
 interface CampingMapProps {
   places: Place[];
@@ -37,6 +38,7 @@ export function CampingMap({
   availablePlaceIds = [],
   availabilityMode = false,
 }: CampingMapProps) {
+  const { isMobile } = useViewport();
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState(DEFAULT_OFFSET);
   const [isDragging, setIsDragging] = useState(false);
@@ -386,7 +388,13 @@ export function CampingMap({
 
   return (
     <div>
-      <div style={topToolbarStyle}>
+      <div
+        style={{
+          ...topToolbarStyle,
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: isMobile ? "stretch" : "center",
+        }}
+      >
         <div style={toolbarLeftStyle}>
           <button
             onClick={() => setScale((prev) => Math.min(prev + 0.2, 6))}
@@ -407,7 +415,12 @@ export function CampingMap({
           </button>
         </div>
 
-        <div style={toolbarRightStyle}>
+        <div
+          style={{
+            ...toolbarRightStyle,
+            justifyContent: isMobile ? "stretch" : "flex-end",
+          }}
+        >
           <div style={zoomBadgeStyle}>Zoom: {scale.toFixed(2)}x</div>
 
           {isDeveloper && (
@@ -635,7 +648,13 @@ export function CampingMap({
 )}
 </div>
 
-      <div style={legendStyle}>
+      <div
+        style={{
+          ...legendStyle,
+          gap: isMobile ? "0.5rem" : legendStyle.gap,
+          padding: isMobile ? "0.7rem" : legendStyle.padding,
+        }}
+      >
         <div style={legendItemStyle}>
     <span
         style={{

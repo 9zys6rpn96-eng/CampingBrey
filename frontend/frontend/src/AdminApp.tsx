@@ -16,6 +16,7 @@ import { CampingMap } from "./components/CampingMap";
 import { BookingOverview } from "./components/BookingOverview";
 import { NewBooking } from "./components/NewBooking";
 import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
+import { useViewport } from "./hooks/useViewport";
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -57,6 +58,8 @@ function sortPlacesByName(places: Place[]) {
 }
 
 function AdminApp() {
+  const { isMobile, isTablet } = useViewport();
+
   useEffect(() => {
     document.title = "Campingplatz Brey – Verwaltung";
   }, []);
@@ -446,7 +449,12 @@ function AdminApp() {
         </div>
       </div>
 
-      <div style={pageContentStyle}>
+      <div
+        style={{
+          ...pageContentStyle,
+          padding: isMobile ? "1rem" : isTablet ? "1.25rem" : "2rem",
+        }}
+      >
         {actionSuccess && <div style={successBoxStyle}>{actionSuccess}</div>}
 
         <section style={cardStyle}>
@@ -514,7 +522,16 @@ function AdminApp() {
             )}
         </section>
 
-        <section style={statsOverviewGridStyle}>
+        <section
+          style={{
+            ...statsOverviewGridStyle,
+            gridTemplateColumns: isMobile
+              ? "1fr"
+              : isTablet
+                ? "repeat(2, minmax(0, 1fr))"
+                : statsOverviewGridStyle.gridTemplateColumns,
+          }}
+        >
           <div style={statsOverviewCardStyle}>
             <div style={statsOverviewLabelStyle}>🟢 Frei</div>
             <div style={statsOverviewValueStyle}>{statusCounts.green}</div>
@@ -548,7 +565,12 @@ function AdminApp() {
         {error && <div style={errorBoxStyle}>{error}</div>}
 
         {!error && hasLoadedOnce && (
-            <div style={dashboardGridStyle}>
+            <div
+              style={{
+                ...dashboardGridStyle,
+                gridTemplateColumns: isMobile || isTablet ? "1fr" : dashboardGridStyle.gridTemplateColumns,
+              }}
+            >
               <aside style={sidebarCardStyle}>
                 <div style={cardHeaderStyle}>
                   <div>
@@ -580,7 +602,7 @@ function AdminApp() {
                     </div>
                   </div>
 
-                                    <CampingMap
+                  <CampingMap
                     places={places}
                     placeStatuses={placeStatuses}
                     bookings={bookings}
