@@ -668,11 +668,6 @@ async function reloadData() {
                   initialStartDate={searchStartDate}
                   initialEndDate={searchEndDate}
                   initialVehicleLengthM={vehicleLengthM}
-                  canEditPlace={
-                    currentUser.role === "developer" ||
-                    currentUser.role === "operator"
-                  }
-                  onPlaceUpdated={reloadData}
                   onBookingCreated={reloadData}
                   onBookingFinished={() => {
                     setBookingModalOpen(false);
@@ -688,13 +683,10 @@ async function reloadData() {
                     currentUser.role === "developer" ||
                     currentUser.role === "operator"
                   }
+                  showBookingForm={false}
                   initialStartDate={searchStartDate}
                   initialEndDate={searchEndDate}
                   initialVehicleLengthM={vehicleLengthM}
-                  onBookingFinished={() => {
-                    setBookingModalOpen(false);
-                    setSelectedPlaceId(null);
-                  }}
                 />
               )}
             </div>

@@ -12,6 +12,7 @@ interface Props {
   initialStartDate?: string;
   initialEndDate?: string;
   initialVehicleLengthM?: string;
+  showBookingForm?: boolean;
   onBookingFinished?: () => void;
 }
 
@@ -105,7 +106,7 @@ function getNextWeekRange() {
 const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese", "Gesperrt"] as const;
 const CUSTOM_PLACE_TYPE = "__custom__";
 
-export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces, initialStartDate = "", initialEndDate = "", initialVehicleLengthM = "", onBookingFinished, }: Props) {
+export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces, initialStartDate = "", initialEndDate = "", initialVehicleLengthM = "", onBookingFinished, showBookingForm = true, }: Props) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -409,7 +410,7 @@ const isTentAreaFull =
                                           : "🟢 Aktuell frei"}
               </div>
           </section>
-
+        {showBookingForm && (
           <section style={panelStyle}>
               <div style={sectionHeaderStyle}>
                   <div>
@@ -610,6 +611,7 @@ const isTentAreaFull =
                   </div>
               )}
           </section>
+          )}
 
           <section style={statsGridStyle}>
               <div style={statCardStyle}>
