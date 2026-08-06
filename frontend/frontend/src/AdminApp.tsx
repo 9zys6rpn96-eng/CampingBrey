@@ -101,103 +101,105 @@ function AdminApp() {
   "booking" | "details"
 >("booking");
 
-  useEffect(() => {
-    async function loadCurrentUser() {
-      const token = localStorage.getItem("auth_token");
+   useEffect(() => {
+     async function loadCurrentUser() {
+       const token = localStorage.getItem("auth_token");
 
-      if (!token) {
-        setAuthLoading(false);
-        return;
-      }
+       if (!token) {
+         setAuthLoading(false);
+         return;
+       }
 
-      try {
-        const user = await fetchMe();
-        setCurrentUser(user);
-      } catch {
-        localStorage.removeItem("auth_token");
-        setCurrentUser(null);
-      } finally {
-        setAuthLoading(false);
-      }
-    }
+       try {
+         const user = await fetchMe();
+         setCurrentUser(user);
+       } catch (err) {
+         localStorage.removeItem("auth_token");
+         setCurrentUser(null);
+         // Optional: Show error message for expired token
+         console.warn("Authentifizierung fehlgeschlagen:", err);
+       } finally {
+         setAuthLoading(false);
+       }
+     }
 
-    loadCurrentUser();
-  }, []);
+     loadCurrentUser();
+   }, []);
 
-  useEffect(() => {
-  if (!currentUser) {
-    setLoading(false);
-    return;
-  }
+   useEffect(() => {
+     if (!currentUser) {
+       setLoading(false);
+       return;
+     }
 
-  async function initialLoad() {
-    try {
-      setLoading(true);
-      setError(null);
+     async function initialLoad() {
+       try {
+         setLoading(true);
+         setError(null);
 
-      const [placesData, bookingsData, statusData] = await Promise.all([
-        fetchPlaces(),
-        fetchBookings(),
-        fetchPlaceStatuses(todayIso, todayIso),
-      ]);
+         const [placesData, bookingsData, statusData] = await Promise.all([
+           fetchPlaces(),
+           fetchBookings(),
+           fetchPlaceStatuses(todayIso, todayIso),
+         ]);
 
-      const sortedPlaces = sortPlacesByName(placesData);
+         const sortedPlaces = sortPlacesByName(placesData);
 
-      setPlaces(sortedPlaces);
-      setBookings(bookingsData);
-      setPlaceStatuses(statusData);
+         setPlaces(sortedPlaces);
+         setBookings(bookingsData);
+         setPlaceStatuses(statusData);
 
-      setSelectedPlaceId((prev) => {
-        if (prev === null) {
-          return null;
-        }
+         setSelectedPlaceId((prev) => {
+           if (prev === null) {
+             return null;
+           }
 
-        const stillExists = sortedPlaces.some((place) => place.id === prev);
-        return stillExists ? prev : null;
-      });
-    } catch (err) {
-      console.error(err);
-      setError("Fehler beim Laden der Daten");
-    } finally {
-      setLoading(false);
-      setHasLoadedOnce(true);
-    }
-  }
+           const stillExists = sortedPlaces.some((place) => place.id === prev);
+           return stillExists ? prev : null;
+         });
+       } catch (err) {
+         console.error(err);
+         setError("Fehler beim Laden der Daten");
+       } finally {
+         setLoading(false);
+         setHasLoadedOnce(true);
+       }
+     }
 
-  initialLoad();
-}, [currentUser, todayIso]);
+     initialLoad();
+   }, [currentUser, todayIso]);
 
-async function reloadData() {
-  if (!currentUser) return;
+ async function reloadData() {
+   if (!currentUser) return;
 
-  try {
-    setError(null);
+   try {
+     setError(null);
 
-    const [placesData, bookingsData, statusData] = await Promise.all([
-      fetchPlaces(),
-      fetchBookings(),
-      fetchPlaceStatuses(todayIso, todayIso),
-    ]);
+     const [placesData, bookingsData, statusData] = await Promise.all([
+       fetchPlaces(),
+       fetchBookings(),
+       fetchPlaceStatuses(todayIso, todayIso),
+     ]);
 
-    const sortedPlaces = sortPlacesByName(placesData);
+     const sortedPlaces = sortPlacesByName(placesData);
 
-    setPlaces(sortedPlaces);
-    setBookings(bookingsData);
-    setPlaceStatuses(statusData);
+     setPlaces(sortedPlaces);
+     setBookings(bookingsData);
+     setPlaceStatuses(statusData);
 
-    setSelectedPlaceId((prev) => {
-      if (prev === null) {
-        return null;
-      }
+     setSelectedPlaceId((prev) => {
+       if (prev === null) {
+         return null;
+       }
 
-      const stillExists = sortedPlaces.some((place) => place.id === prev);
-      return stillExists ? prev : null;
-    });
-  } catch (err) {
-    console.error(err);
-    setError("Fehler beim Laden der Daten");
-  }
-}
+       const stillExists = sortedPlaces.some((place) => place.id === prev);
+       return stillExists ? prev : null;
+     });
+   } catch (err) {
+     console.error(err);
+     setError("Fehler beim Laden der Daten");
+   }
+ }
 
   const selectedPlace = places.find((p) => p.id === selectedPlaceId) ?? null;
 
@@ -208,44 +210,45 @@ async function reloadData() {
     selectedPlaceId !== null
       ? bookings.filter((b) => b.place_id === selectedPlaceId)
       : [];
-    const statusCounts = useMemo(() => {
-    return placeStatuses.reduce(
-      (acc, status) => {
-        if (status.status === "green") acc.green += 1;
-        else if (status.status === "yellow") acc.yellow += 1;
-        else if (status.status === "red") acc.red += 1;
-        else if (status.status === "gray") acc.gray += 1;
-        else if (status.status === "blocked") acc.blocked += 1;
+   const statusCounts = useMemo(() => {
+     return placeStatuses.reduce(
+       (acc, status) => {
+         if (status.status === "green") acc.green += 1;
+         else if (status.status === "yellow") acc.yellow += 1;
+         else if (status.status === "red") acc.red += 1;
+         else if (status.status === "gray") acc.gray += 1;
+         else if (status.status === "blocked") acc.blocked += 1;
 
-        return acc;
-      },
-      { green: 0, yellow: 0, red: 0, gray: 0, blocked: 0 }
-    );
-  }, [placeStatuses]);
+         return acc;
+       },
+       { green: 0, yellow: 0, red: 0, gray: 0, blocked: 0 }
+     );
+   }, [placeStatuses]);
 
-  async function handleAvailabilitySearch() {
-  try {
-    setAvailabilityError(null);
+   async function handleAvailabilitySearch() {
+     try {
+       setAvailabilityError(null);
 
-    const length =
-      vehicleLengthM.trim() === "" ? undefined : Number(vehicleLengthM);
+       const length =
+         vehicleLengthM.trim() === "" ? undefined : Number(vehicleLengthM);
 
-    const result = await fetchAvailablePlaces(
-      searchStartDate,
-      searchEndDate,
-      length
-    );
+       const result = await fetchAvailablePlaces(
+         searchStartDate,
+         searchEndDate,
+         length
+       );
 
-    setAvailablePlaces(result);
-  } catch (err: any) {
-    setAvailabilityError(err.message || "Fehler bei der Verfügbarkeitssuche");
-  }
-}
-  function clearAvailabilitySearch() {
-  setAvailablePlaces([]);
-  setAvailabilityError(null);
-  setVehicleLengthM("");
-}
+       setAvailablePlaces(result);
+     } catch (err: any) {
+       setAvailabilityError(err.message || "Fehler bei der Verfügbarkeitssuche");
+     }
+   }
+
+   function clearAvailabilitySearch() {
+     setAvailablePlaces([]);
+     setAvailabilityError(null);
+     setVehicleLengthM("");
+   }
 
   async function handleLogin() {
     try {
@@ -281,73 +284,73 @@ async function reloadData() {
     setUserCreateError(null);
   }
 
-  async function loadUsers() {
-  if (currentUser?.role !== "developer") return;
+   async function loadUsers() {
+     if (currentUser?.role !== "developer") return;
 
-  try {
-    setUsersError(null);
-    const usersData = await fetchUsers();
-    setUsers(usersData);
-  } catch (err: any) {
-    setUsersError(err.message || "Fehler beim Laden der Benutzer");
-  }
-}
+     try {
+       setUsersError(null);
+       const usersData = await fetchUsers();
+       setUsers(usersData);
+     } catch (err: any) {
+       setUsersError(err.message || "Fehler beim Laden der Benutzer");
+     }
+   }
 
-  useEffect(() => {
-  if (currentUser?.role === "developer") {
-    loadUsers();
-  }
-}, [currentUser]);
+   useEffect(() => {
+     if (currentUser?.role === "developer") {
+       loadUsers();
+     }
+   }, [currentUser]);
 
-  async function handleCreateUser() {
-  try {
-    setUserCreateSuccess(null);
-    setUserCreateError(null);
+   async function handleCreateUser() {
+     try {
+       setUserCreateSuccess(null);
+       setUserCreateError(null);
 
-    const createdUser = await createUser({
-      username: newUsername,
-      password: newPassword,
-      role: newUserRole,
-    });
+       const createdUser = await createUser({
+         username: newUsername,
+         password: newPassword,
+         role: newUserRole,
+       });
 
-    setUserCreateSuccess(`Benutzer "${createdUser.username}" wurde erstellt.`);
-    setNewUsername("");
-    setNewPassword("");
-    setNewUserRole("operator");
+       setUserCreateSuccess(`Benutzer "${createdUser.username}" wurde erstellt.`);
+       setNewUsername("");
+       setNewPassword("");
+       setNewUserRole("operator");
 
-    await loadUsers();
+       await loadUsers();
 
-  } catch (err: any) {
-    setUserCreateError(err.message || "Fehler beim Erstellen des Benutzers");
-  }
-}
+     } catch (err: any) {
+       setUserCreateError(err.message || "Fehler beim Erstellen des Benutzers");
+     }
+   }
 
- async function handleDeleteUser(userId: number) {
-  const confirmed = window.confirm(
-    "Diesen Benutzer wirklich löschen?"
-  );
+   async function handleDeleteUser(userId: number) {
+     const confirmed = window.confirm(
+       "Diesen Benutzer wirklich löschen?"
+     );
 
-  if (!confirmed) return;
+     if (!confirmed) return;
 
-  try {
-    await deleteUser(userId);
-    await loadUsers();
-    setActionSuccess("Benutzer wurde gelöscht.");
-  } catch (err: any) {
-    setUsersError(err.message || "Fehler beim Löschen");
-  }
-}
-  function handleSelectPlace(placeId: number) {
-  if (selectedPlaceId === placeId && bookingModalOpen) {
-    setSelectedPlaceId(null);
-    setBookingModalOpen(false);
-    return;
-  }
+     try {
+       await deleteUser(userId);
+       await loadUsers();
+       setActionSuccess("Benutzer wurde gelöscht.");
+     } catch (err: any) {
+       setUsersError(err.message || "Fehler beim Löschen");
+     }
+   }
+   function handleSelectPlace(placeId: number) {
+     if (selectedPlaceId === placeId && bookingModalOpen) {
+       setSelectedPlaceId(null);
+       setBookingModalOpen(false);
+       return;
+     }
 
-  setSelectedPlaceId(placeId);
-  setPlaceModalTab("booking");
-  setBookingModalOpen(true);
-}
+     setSelectedPlaceId(placeId);
+     setPlaceModalTab("booking");
+     setBookingModalOpen(true);
+   }
 
   if (authLoading) {
     return (
@@ -815,50 +818,68 @@ async function reloadData() {
   );
 }
 const colors = {
-  pageBg: "#eef6f1",
-  pageBgAlt: "#f7faf8",
+  // Neutrals
+  pageBg: "#f0f4f8",
+  pageBgAlt: "#ffffff",
   cardBg: "#ffffff",
-  border: "#d7e4db",
-  borderStrong: "#bfd4c7",
-  text: "#163126",
-  muted: "#5f766b",
-  brand: "#15803d",
-  brandDark: "#166534",
-  brandSoft: "#dcfce7",
-  brandSoftBorder: "#bbf7d0",
+  border: "#e2e8f0",
+  borderStrong: "#cbd5e1",
+  text: "#0f172a",
+  muted: "#64748b",
+
+  // Brand - Emerald/Green
+  brand: "#10b981",
+  brandDark: "#059669",
+  brandLight: "#d1fae5",
+  brandSoft: "#ecfdf5",
+  brandSoftBorder: "#a7f3d0",
+
+  // Accent - Sky Blue
+  accentBlue: "#0ea5e9",
   accentBlueSoft: "#e0f2fe",
   accentBlueBorder: "#bae6fd",
+
+  // Status Colors
+  success: "#10b981",
+  warning: "#f59e0b",
+  danger: "#ef4444",
+  info: "#06b6d4",
+
+  // Soft backgrounds
   dangerSoft: "#fee2e2",
   dangerBorder: "#fecaca",
   dangerText: "#991b1b",
+  warningSoft: "#fef3c7",
+  warningBorder: "#fde68a",
+  warningText: "#92400e",
 };
 
 const appShellStyle: React.CSSProperties = {
   minHeight: "100vh",
-  background:
-      "linear-gradient(180deg, #e8f5ec 0%, #eef6f1 220px, #f7faf8 220px, #f7faf8 100%)",
+  background: "linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 50%, #f0f4f8 100%)",
   color: colors.text,
-  fontFamily: "system-ui, sans-serif",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif",
 };
 
 const topBarStyle: React.CSSProperties = {
   position: "sticky",
   top: 0,
   zIndex: 20,
-  backdropFilter: "blur(10px)",
-  backgroundColor: "rgba(248, 250, 249, 0.88)",
-  borderBottom: `1px solid ${colors.border}`,
+  backdropFilter: "blur(12px)",
+  backgroundColor: "rgba(255, 255, 255, 0.95)",
+  borderBottom: `2px solid ${colors.border}`,
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
 };
 
 const topBarInnerStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "1600px",
   margin: "0 auto",
-  padding: "0.95rem 1.5rem",
+  padding: "1rem 2rem",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "1rem",
+  gap: "2rem",
   flexWrap: "wrap",
   boxSizing: "border-box",
 };
@@ -866,117 +887,126 @@ const topBarInnerStyle: React.CSSProperties = {
 const brandBlockStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "0.9rem",
+  gap: "1rem",
 };
 
 const brandLogoStyle: React.CSSProperties = {
-  width: "56px",
-  height: "56px",
+  width: "64px",
+  height: "64px",
   objectFit: "contain",
-  borderRadius: "999px",
-  backgroundColor: "white",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  borderRadius: "12px",
+  backgroundColor: colors.brandSoft,
+  boxShadow: "0 8px 24px rgba(16, 185, 129, 0.15)",
+  padding: "4px",
 };
 
 const brandTitleStyle: React.CSSProperties = {
-  fontSize: "1.15rem",
+  fontSize: "1.35rem",
   fontWeight: 800,
   color: colors.text,
   lineHeight: 1.1,
+  letterSpacing: "-0.5px",
 };
 
 const brandSubtitleStyle: React.CSSProperties = {
-  marginTop: "0.2rem",
-  fontSize: "0.92rem",
+  marginTop: "0.3rem",
+  fontSize: "0.9rem",
   color: colors.muted,
+  fontWeight: 500,
 };
 
 const headerRightStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "0.75rem",
+  gap: "1.2rem",
   flexWrap: "wrap",
 };
 
 const userBadgeStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "0.35rem",
-  padding: "0.55rem 0.8rem",
-  borderRadius: "999px",
-  backgroundColor: "#ffffff",
-  border: `1px solid ${colors.border}`,
-  color: colors.text,
+  gap: "0.6rem",
+  padding: "0.7rem 1.2rem",
+  borderRadius: "8px",
+  backgroundColor: colors.accentBlueSoft,
+  border: `1.5px solid ${colors.accentBlueBorder}`,
+  color: colors.accentBlue,
+  fontWeight: 600,
+  fontSize: "0.9rem",
 };
 
 const pageContentStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "1600px",
   margin: "0 auto",
-  padding: "1.5rem",
+  padding: "2rem",
   boxSizing: "border-box",
 };
 
 
 const dashboardGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "320px minmax(0, 1fr)",
-  gap: "1rem",
+  gridTemplateColumns: "340px minmax(0, 1fr)",
+  gap: "1.5rem",
   alignItems: "start",
 };
 
 const sidebarCardStyle: React.CSSProperties = {
   backgroundColor: colors.cardBg,
-  border: `1px solid ${colors.border}`,
-  borderRadius: "1rem",
-  padding: "1rem",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
+  border: `1.5px solid ${colors.border}`,
+  borderRadius: "12px",
+  padding: "1.5rem",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   minHeight: "700px",
   boxSizing: "border-box",
+  transition: "box-shadow 0.3s ease",
 };
 
 const sidebarContentStyle: React.CSSProperties = {
   maxHeight: "720px",
   overflowY: "auto",
-  paddingRight: "0.25rem",
+  paddingRight: "0.5rem",
 };
 
 const mainColumnStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateRows: "min-content 1fr",
-  gap: "1rem",
+  gap: "1.5rem",
   minHeight: "700px",
 };
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: colors.cardBg,
-  border: `1px solid ${colors.border}`,
-  borderRadius: "1rem",
-  padding: "1rem",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
+  border: `1.5px solid ${colors.border}`,
+  borderRadius: "12px",
+  padding: "2rem",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   boxSizing: "border-box",
+  transition: "all 0.3s ease",
 };
 
 const cardHeaderStyle: React.CSSProperties = {
-  marginBottom: "0.9rem",
+  marginBottom: "1.5rem",
 };
 
 const cardTitleStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: "1.08rem",
+  fontSize: "1.35rem",
   fontWeight: 800,
   color: colors.text,
+  letterSpacing: "-0.5px",
 };
 
 const cardSubtitleStyle: React.CSSProperties = {
-  margin: "0.3rem 0 0 0",
+  margin: "0.5rem 0 0 0",
   color: colors.muted,
-  fontSize: "0.94rem",
+  fontSize: "0.95rem",
+  fontWeight: 500,
+  lineHeight: 1.5,
 };
-
 const formRowStyle: React.CSSProperties = {
   display: "flex",
-  gap: "0.85rem",
+  gap: "1.2rem",
   flexWrap: "wrap",
   alignItems: "end",
 };
@@ -999,62 +1029,72 @@ const actionFieldStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: "0.9rem",
-  marginBottom: "0.35rem",
+  marginBottom: "0.6rem",
   color: colors.muted,
   fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.3px",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "0.72rem 0.82rem",
-  border: `1px solid ${colors.borderStrong}`,
-  borderRadius: "0.75rem",
+  padding: "0.85rem 1rem",
+  border: `1.5px solid ${colors.border}`,
+  borderRadius: "8px",
   backgroundColor: "#ffffff",
   color: colors.text,
   boxSizing: "border-box",
   outline: "none",
+  fontSize: "0.95rem",
+  transition: "all 0.2s ease",
 };
 
 const primaryButtonStyle: React.CSSProperties = {
-  padding: "0.78rem 1.05rem",
-  borderRadius: "0.75rem",
-  border: `1px solid ${colors.brand}`,
+  padding: "0.9rem 1.5rem",
+  borderRadius: "8px",
+  border: "none",
   background: `linear-gradient(135deg, ${colors.brand} 0%, ${colors.brandDark} 100%)`,
   color: "white",
   cursor: "pointer",
   fontWeight: 700,
-  boxShadow: "0 8px 18px rgba(21, 128, 61, 0.20)",
+  fontSize: "0.95rem",
+  boxShadow: "0 10px 25px rgba(16, 185, 129, 0.25)",
+  transition: "all 0.3s ease",
 };
 
 const secondaryButtonStyle: React.CSSProperties = {
-  padding: "0.7rem 1rem",
-  borderRadius: "0.75rem",
-  border: `1px solid ${colors.borderStrong}`,
+  padding: "0.85rem 1.3rem",
+  borderRadius: "8px",
+  border: `1.5px solid ${colors.border}`,
   backgroundColor: "#ffffff",
   color: colors.text,
   cursor: "pointer",
   fontWeight: 600,
+  fontSize: "0.95rem",
+  transition: "all 0.2s ease",
 };
 
 const successBoxStyle: React.CSSProperties = {
-  marginBottom: "1rem",
-  padding: "0.8rem 1rem",
-  borderRadius: "0.8rem",
+  marginBottom: "1.2rem",
+  padding: "1rem 1.2rem",
+  borderRadius: "8px",
   backgroundColor: colors.brandSoft,
   color: colors.brandDark,
-  border: `1px solid ${colors.brandSoftBorder}`,
+  border: `1.5px solid ${colors.brandSoftBorder}`,
   fontSize: "0.95rem",
+  fontWeight: 500,
 };
 
 const errorBoxStyle: React.CSSProperties = {
   marginTop: "1rem",
   marginBottom: "1rem",
-  padding: "0.8rem 1rem",
-  borderRadius: "0.8rem",
+  padding: "1rem 1.2rem",
+  borderRadius: "8px",
   backgroundColor: colors.dangerSoft,
   color: colors.dangerText,
-  border: `1px solid ${colors.dangerBorder}`,
+  border: `1.5px solid ${colors.dangerBorder}`,
   fontSize: "0.95rem",
+  fontWeight: 500,
 };
 
 const pageLoadingStyle: React.CSSProperties = {
@@ -1062,18 +1102,19 @@ const pageLoadingStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background:
-    "linear-gradient(180deg, #e8f5ec 0%, #eef6f1 220px, #f7faf8 220px, #f7faf8 100%)",
-  padding: "1.5rem",
+  background: "linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 50%, #f0f4f8 100%)",
+  padding: "2rem",
 };
 
 const loadingCardStyle: React.CSSProperties = {
-  padding: "1rem 1.2rem",
-  borderRadius: "1rem",
+  padding: "2rem",
+  borderRadius: "12px",
   backgroundColor: "#ffffff",
-  border: `1px solid ${colors.border}`,
-  boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+  border: `1.5px solid ${colors.border}`,
+  boxShadow: "0 12px 32px rgba(0, 0, 0, 0.12)",
   color: colors.text,
+  fontSize: "1.05rem",
+  fontWeight: 500,
 };
 
 const loginPageStyle: React.CSSProperties = {
@@ -1081,85 +1122,96 @@ const loginPageStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background:
-    "radial-gradient(circle at top, #dcfce7 0%, #eef6f1 35%, #f7faf8 100%)",
-  padding: "1.5rem",
+  background: "linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 50%, #f0f4f8 100%)",
+
+  padding: "2rem",
 };
 
 const loginCardStyle: React.CSSProperties = {
   width: "100%",
-  maxWidth: "460px",
+  maxWidth: "480px",
   backgroundColor: "#ffffff",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "1.25rem",
-  padding: "1.6rem",
-  boxShadow: "0 18px 40px rgba(0,0,0,0.10)",
+  border: `1.5px solid ${colors.border}`,
+  borderRadius: "12px",
+  padding: "2.5rem",
+  boxShadow: "0 20px 50px rgba(0, 0, 0, 0.15)",
 };
 
 const loginHeaderStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "1rem",
-  marginBottom: "1.35rem",
+  gap: "1.5rem",
+  marginBottom: "2rem",
 };
 
 const loginLogoStyle: React.CSSProperties = {
-  width: "72px",
-  height: "72px",
+  width: "80px",
+  height: "80px",
   objectFit: "contain",
-  borderRadius: "999px",
-  backgroundColor: "#ffffff",
+  borderRadius: "12px",
+  backgroundColor: colors.brandSoft,
+  padding: "8px",
+  boxShadow: "0 8px 20px rgba(16, 185, 129, 0.15)",
 };
 
 const loginTitleStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: "1.45rem",
+  fontSize: "1.55rem",
   fontWeight: 800,
   color: colors.text,
+  letterSpacing: "-0.5px",
 };
 
 const loginSubtitleStyle: React.CSSProperties = {
-  margin: "0.25rem 0 0 0",
+  margin: "0.4rem 0 0 0",
   color: colors.muted,
+  fontSize: "0.95rem",
+  fontWeight: 500,
 };
 
 const sectionTitleSmallStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: "1.1rem",
+  fontSize: "1.15rem",
   color: colors.text,
+  fontWeight: 700,
 };
 
 const sectionMutedTextStyle: React.CSSProperties = {
-  margin: "0.35rem 0 0 0",
+  margin: "0.5rem 0 0 0",
   color: colors.muted,
+  fontSize: "0.9rem",
 };
 
 const statsOverviewGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: "0.85rem",
-  marginBottom: "1rem",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "1rem",
+  marginBottom: "1.5rem",
 };
 
 const statsOverviewCardStyle: React.CSSProperties = {
   backgroundColor: "#ffffff",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "1rem",
-  padding: "1rem",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.05)",
+  border: `1.5px solid ${colors.border}`,
+  borderRadius: "12px",
+  padding: "1.5rem",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
+  transition: "all 0.3s ease",
 };
 
 const statsOverviewLabelStyle: React.CSSProperties = {
-  fontSize: "0.88rem",
+  fontSize: "0.85rem",
   color: colors.muted,
   fontWeight: 700,
-  marginBottom: "0.35rem",
+  marginBottom: "0.6rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.3px",
 };
 
 const statsOverviewValueStyle: React.CSSProperties = {
-  fontSize: "1.55rem",
+  fontSize: "1.75rem",
   fontWeight: 800,
   color: colors.text,
+  lineHeight: 1.1,
 };
 
 const bookingModalOverlayStyle: React.CSSProperties = {
@@ -1170,7 +1222,8 @@ const bookingModalOverlayStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   padding: "1rem",
-  backgroundColor: "rgba(15, 23, 42, 0.5)",
+  backgroundColor: "rgba(15, 23, 42, 0.6)",
+  backdropFilter: "blur(4px)",
 };
 
 const bookingModalCardStyle: React.CSSProperties = {
@@ -1178,67 +1231,76 @@ const bookingModalCardStyle: React.CSSProperties = {
   maxWidth: "1000px",
   maxHeight: "92vh",
   overflowY: "auto",
-  padding: "1.25rem",
-  borderRadius: "1rem",
+  padding: "2rem",
+  borderRadius: "12px",
   backgroundColor: "#ffffff",
-  border: `1px solid ${colors.border}`,
-  boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+  border: `1.5px solid ${colors.border}`,
+  boxShadow: "0 25px 60px rgba(0, 0, 0, 0.35)",
   boxSizing: "border-box",
+  animation: "slideUp 0.3s ease",
 };
 
 const bookingModalHeaderStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
-  gap: "1rem",
-  marginBottom: "1rem",
+  gap: "1.5rem",
+  marginBottom: "1.5rem",
+  paddingBottom: "1.5rem",
+  borderBottom: `1.5px solid ${colors.border}`,
 };
 
 const bookingModalTitleStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: "1.25rem",
+  fontSize: "1.35rem",
   fontWeight: 800,
   color: colors.text,
+  letterSpacing: "-0.5px",
 };
 
 const bookingModalCloseStyle: React.CSSProperties = {
-  width: "36px",
-  height: "36px",
+  width: "40px",
+  height: "40px",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  border: `1px solid ${colors.border}`,
-  borderRadius: "999px",
+  border: `1.5px solid ${colors.border}`,
+  borderRadius: "8px",
   backgroundColor: "#ffffff",
   color: colors.muted,
   cursor: "pointer",
-  fontSize: "1rem",
+  fontSize: "1.2rem",
   flexShrink: 0,
+  transition: "all 0.2s ease",
 };
 
 const modalTabRowStyle: React.CSSProperties = {
   display: "flex",
-  gap: "0.6rem",
+  gap: "0.8rem",
   flexWrap: "wrap",
-  marginBottom: "1rem",
-  paddingBottom: "1rem",
-  borderBottom: `1px solid ${colors.border}`,
+  marginBottom: "1.5rem",
+  paddingBottom: "0",
+  borderBottom: "none",
 };
 
 const modalTabButtonStyle: React.CSSProperties = {
-  padding: "0.65rem 0.9rem",
-  borderRadius: "0.75rem",
-  border: `1px solid ${colors.border}`,
+  padding: "0.8rem 1.2rem",
+  borderRadius: "8px",
+  border: `1.5px solid ${colors.border}`,
   backgroundColor: "#ffffff",
+
   color: colors.muted,
   cursor: "pointer",
   fontWeight: 700,
+  fontSize: "0.95rem",
+  transition: "all 0.2s ease",
 };
 
 const activeModalTabButtonStyle: React.CSSProperties = {
-  border: `1px solid ${colors.brand}`,
+  border: `1.5px solid ${colors.brand}`,
   backgroundColor: colors.brandSoft,
   color: colors.brandDark,
+  fontWeight: 800,
 };
 
 export default AdminApp;

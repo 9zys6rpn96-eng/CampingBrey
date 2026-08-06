@@ -234,76 +234,80 @@ export function PlaceList({
 const controlsWrapperStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.75rem",
+  gap: "1rem",
 };
 
 const searchLabelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: "0.82rem",
+  fontSize: "0.85rem",
   fontWeight: 700,
-  color: "#5f766b",
-  marginBottom: "0.35rem",
+  color: "#64748b",
+  marginBottom: "0.5rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.3px",
 };
 
 const searchInputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "0.72rem 0.82rem",
-  border: "1px solid #bfd4c7",
-  borderRadius: "0.75rem",
+  padding: "0.85rem 1rem",
+  border: "1.5px solid #e2e8f0",
+  borderRadius: "8px",
   backgroundColor: "#ffffff",
-  color: "#163126",
+  color: "#0f172a",
   boxSizing: "border-box",
   outline: "none",
+  fontSize: "0.9rem",
+  transition: "all 0.2s ease",
 };
 
 const filterRowStyle: React.CSSProperties = {
   display: "flex",
-  gap: "0.45rem",
+  gap: "0.6rem",
   flexWrap: "wrap",
 };
 
 const filterButtonStyle: React.CSSProperties = {
-  padding: "0.45rem 0.7rem",
-  borderRadius: "999px",
-  border: "1px solid #d7e4db",
+  padding: "0.55rem 1rem",
+  borderRadius: "8px",
+  border: "1.5px solid #e2e8f0",
   backgroundColor: "#ffffff",
-  color: "#355447",
+  color: "#64748b",
   cursor: "pointer",
-  fontSize: "0.8rem",
+  fontSize: "0.85rem",
   fontWeight: 700,
+  transition: "all 0.2s ease",
 };
 
 const activeFilterButtonStyle: React.CSSProperties = {
-  backgroundColor: "#dcfce7",
-  border: "1px solid #86efac",
-  color: "#166534",
+  backgroundColor: "#ecfdf5",
+  border: "1.5px solid #a7f3d0",
+  color: "#059669",
 };
 
 const resultInfoStyle: React.CSSProperties = {
-  fontSize: "0.82rem",
-  color: "#6b7280",
+  fontSize: "0.85rem",
+  color: "#64748b",
   fontWeight: 600,
 };
 
 const listWrapperStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.7rem",
+  gap: "0.85rem",
 };
 
 const placeButtonStyle: React.CSSProperties = {
   width: "100%",
   textAlign: "left",
-  padding: "0.9rem 0.95rem",
-  borderRadius: "0.95rem",
-  border: "1px solid #d7e4db",
+  padding: "1rem",
+  borderRadius: "8px",
+  border: "1.5px solid #e2e8f0",
   background: "#ffffff",
   backgroundColor: "#ffffff",
-  color: "#163126",
+  color: "#0f172a",
   cursor: "pointer",
-  transition:
-    "transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background-color 0.12s ease",
-  boxShadow: "0 3px 10px rgba(0,0,0,0.04)",
+  transition: "all 0.2s ease",
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.06)",
   appearance: "none",
   WebkitAppearance: "none",
   MozAppearance: "none",
@@ -311,11 +315,11 @@ const placeButtonStyle: React.CSSProperties = {
 };
 
 const selectedPlaceButtonStyle: React.CSSProperties = {
-  border: "1px solid #15803d",
-  background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-  backgroundColor: "#dcfce7",
-  boxShadow: "0 10px 22px rgba(21, 128, 61, 0.14)",
-  transform: "translateY(-1px)",
+  border: "1.5px solid #10b981",
+  background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
+  backgroundColor: "#ecfdf5",
+  boxShadow: "0 12px 28px rgba(16, 185, 129, 0.18)",
+  transform: "translateY(-2px)",
 };
 
 const placeTopRowStyle: React.CSSProperties = {
@@ -331,46 +335,46 @@ const placeNameBlockStyle: React.CSSProperties = {
 };
 
 const placeNumberStyle: React.CSSProperties = {
-  fontSize: "1.02rem",
+  fontSize: "1.1rem",
   fontWeight: 800,
-  color: "#163126",
+  color: "#0f172a",
   lineHeight: 1.2,
-  marginBottom: "0.2rem",
+  marginBottom: "0.3rem",
 };
 
 const selectedPlaceNumberStyle: React.CSSProperties = {
-  color: "#166534",
+  color: "#059669",
 };
 
 const placeTypeStyle: React.CSSProperties = {
   fontSize: "0.85rem",
-  color: "#5f766b",
-  lineHeight: 1.35,
+  color: "#64748b",
+  lineHeight: 1.4,
 };
 
 const selectedPlaceTypeStyle: React.CSSProperties = {
-  color: "#355447",
+  color: "#475569",
 };
 
 const capacityBadgeStyle: React.CSSProperties = {
-  minWidth: "34px",
-  height: "34px",
-  borderRadius: "999px",
-  border: "1px solid #d7e4db",
+  minWidth: "36px",
+  height: "36px",
+  borderRadius: "8px",
+  border: "1.5px solid #e2e8f0",
   backgroundColor: "#f8fafc",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   fontWeight: 800,
   fontSize: "0.9rem",
-  color: "#355447",
+  color: "#64748b",
   flexShrink: 0,
 };
 
 const selectedCapacityBadgeStyle: React.CSSProperties = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #86efac",
-  color: "#166534",
+  backgroundColor: "#ecfdf5",
+  border: "1.5px solid #a7f3d0",
+  color: "#059669",
 };
 
 const placeBottomRowStyle: React.CSSProperties = {
@@ -388,37 +392,37 @@ const statusDotStyle: React.CSSProperties = {
 };
 
 const placeMetaStyle: React.CSSProperties = {
-  fontSize: "0.82rem",
-  color: "#6b7280",
+  fontSize: "0.85rem",
+  color: "#64748b",
   fontWeight: 600,
 };
 
 const selectedPlaceMetaStyle: React.CSSProperties = {
-  color: "#355447",
+  color: "#475569",
 };
 
 const emptyStateStyle: React.CSSProperties = {
-  padding: "1.25rem 1rem",
-  borderRadius: "1rem",
-  border: "1px dashed #cbd5e1",
+  padding: "2rem 1.5rem",
+  borderRadius: "8px",
+  border: "2px dashed #cbd5e1",
   backgroundColor: "#f8fafc",
   textAlign: "center",
 };
 
 const emptyIconStyle: React.CSSProperties = {
-  fontSize: "1.8rem",
-  marginBottom: "0.55rem",
+  fontSize: "2.5rem",
+  marginBottom: "0.8rem",
 };
 
 const emptyTitleStyle: React.CSSProperties = {
-  fontSize: "1rem",
+  fontSize: "1.05rem",
   fontWeight: 800,
-  color: "#163126",
-  marginBottom: "0.3rem",
+  color: "#0f172a",
+  marginBottom: "0.5rem",
 };
 
 const emptyTextStyle: React.CSSProperties = {
   fontSize: "0.9rem",
-  color: "#5f766b",
-  lineHeight: 1.45,
+  color: "#64748b",
+  lineHeight: 1.5,
 };

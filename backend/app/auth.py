@@ -1,8 +1,13 @@
+import os
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET"
+# Use environment variable for SECRET_KEY with fallback for development
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "dev-key-change-in-production-immediately"
+)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
 

@@ -47,3 +47,13 @@ export interface User {
   username: string;
   role: string;
 }
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface CurrentUser {
+  username: string;
+  role: string;
+}

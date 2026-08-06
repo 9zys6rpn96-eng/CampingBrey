@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Place, PlaceStatus, Booking } from "../types";
-console.log("CampingMap Datei geladen");
 
 interface CampingMapProps {
   places: Place[];
@@ -38,8 +37,6 @@ export function CampingMap({
   availablePlaceIds = [],
   availabilityMode = false,
 }: CampingMapProps) {
-  console.log("CampingMap availabilityMode:", availabilityMode);
-  console.log("CampingMap availablePlaceIds:", availablePlaceIds);
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState(DEFAULT_OFFSET);
   const [isDragging, setIsDragging] = useState(false);

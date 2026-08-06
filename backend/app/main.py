@@ -523,22 +523,28 @@ def list_places_with_status(
     if start_date > end_date:
         raise HTTPException(
             status_code=400,
-            detail="start_date must be before or equal to end_date"
+            detail="Das Anreisedatum muss vor dem Abreisedatum liegen"
         )
 
     places = db.query(models.Place).all()
-    result = []
 
-    for place in places:
-        overlapping_bookings = (
-            db.query(models.Booking)
-            .filter(
-                models.Booking.place_id == place.id,
-                models.Booking.start_date <= end_date,
-                models.Booking.end_date > start_date,
-            )
-            .all()
+    # Fetch all bookings for date range in a single query (avoid N+1)
+    all_bookings = (
+        db.query(models.Booking)
+        .filter(
+            models.Booking.start_date <= end_date,
+            models.Booking.end_date > start_date,
         )
+        .all()
+    )
+
+    result = []
+    for place in places:
+        # Filter in-memory instead of additional DB queries
+        overlapping_bookings = [
+            b for b in all_bookings
+            if b.place_id == place.id
+        ]
 
         place_status = calculate_place_status_for_range(
             place=place,
@@ -561,10 +567,21 @@ def list_available_places(
     if start_date >= end_date:
         raise HTTPException(
             status_code=400,
-            detail="Start date must be before end date"
+            detail="Das Anreisedatum muss vor dem Abreisedatum liegen"
         )
 
     places = db.query(models.Place).all()
+
+    # Fetch all bookings for date range in a single query (avoid N+1)
+    all_bookings = (
+        db.query(models.Booking)
+        .filter(
+            models.Booking.start_date < end_date,
+            models.Booking.end_date > start_date,
+        )
+        .all()
+    )
+
     available_places = []
 
     for place in places:
@@ -575,15 +592,11 @@ def list_available_places(
             if vehicle_length_m > place.length_m:
                 continue
 
-        overlapping_bookings = (
-            db.query(models.Booking)
-            .filter(
-                models.Booking.place_id == place.id,
-                start_date < models.Booking.end_date,
-                end_date > models.Booking.start_date,
-            )
-            .all()
-        )
+        # Filter in-memory instead of additional DB queries
+        overlapping_bookings = [
+            b for b in all_bookings
+            if b.place_id == place.id
+        ]
 
         if would_exceed_capacity(
             place=place,
@@ -598,11 +611,15 @@ def list_available_places(
     return available_places
 
 @app.put("/bookings/{booking_id}/noshow")
-def mark_no_show(booking_id: int, db: Session = Depends(get_db)):
+def mark_no_show(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_authenticated_user),
+):
     booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
 
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
 
     booking.status = "noshow"
     db.commit()
@@ -619,7 +636,7 @@ def update_place(
     place = db.query(models.Place).filter(models.Place.id == place_id).first()
 
     if place is None:
-        raise HTTPException(status_code=404, detail="Place not found")
+        raise HTTPException(status_code=404, detail="Platz nicht gefunden")
 
     place.name = updated.name
     place.type = updated.type
@@ -640,7 +657,7 @@ def create_booking(
 ):
     place = db.query(models.Place).filter(models.Place.id == booking.place_id).first()
     if place is None:
-        raise HTTPException(status_code=400, detail="Place not found")
+        raise HTTPException(status_code=400, detail="Platz nicht gefunden")
 
     if booking.start_date >= booking.end_date:
         raise HTTPException(
@@ -653,7 +670,12 @@ def create_booking(
             status_code=400,
             detail="Dieser Platz kann nicht gebucht werden"
         )
-    if booking.vehicle_size and place.length_m:
+    # Only perform vehicle length check for non-tent areas
+    if (
+        booking.vehicle_size and
+        place.length_m and
+        place.type != "Zeltwiese"
+    ):
         try:
             vehicle_length = float(
                 booking.vehicle_size.replace(" m", "").replace(",", ".")
@@ -665,27 +687,31 @@ def create_booking(
                     detail=f"Fahrzeug zu lang. Maximal {place.length_m} m erlaubt."
                 )
         except ValueError:
-            pass
-        overlapping_bookings = (
-            db.query(models.Booking)
-            .filter(
-                models.Booking.place_id == booking.place_id,
-                booking.start_date < models.Booking.end_date,
-                booking.end_date > models.Booking.start_date,
-            )
-            .all()
-        )
-
-        if would_exceed_capacity(
-                place=place,
-                existing_bookings=overlapping_bookings,
-                start_date=booking.start_date,
-                end_date=booking.end_date,
-        ):
             raise HTTPException(
                 status_code=400,
-                detail="Place is full for at least one day in this period"
+                detail="Bitte eine gültige Fahrzeuglänge eingeben."
             )
+
+    overlapping_bookings = (
+        db.query(models.Booking)
+        .filter(
+            models.Booking.place_id == booking.place_id,
+            booking.start_date < models.Booking.end_date,
+            booking.end_date > models.Booking.start_date,
+        )
+        .all()
+    )
+
+    if would_exceed_capacity(
+        place=place,
+        existing_bookings=overlapping_bookings,
+        start_date=booking.start_date,
+        end_date=booking.end_date,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Place is full for at least one day in this period"
+        )
 
     db_booking = models.Booking(
         place_id=booking.place_id,
@@ -721,7 +747,7 @@ def delete_booking(
     booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
 
     if booking is None:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
 
     db.delete(booking)
     db.commit()

@@ -1,4 +1,4 @@
-import type { Place, Booking, PlaceStatus, User } from "../types";
+import type { Place, Booking, PlaceStatus, User, LoginResponse, CurrentUser } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -25,7 +25,7 @@ async function apiGet<T>(path: string): Promise<T> {
   return res.json();
 }
 
-export async function login(username: string, password: string) {
+export async function login(username: string, password: string): Promise<LoginResponse> {
   const body = new URLSearchParams();
   body.append("username", username);
   body.append("password", password);
@@ -43,7 +43,7 @@ export async function login(username: string, password: string) {
     throw new Error(errorData.detail || "Login fehlgeschlagen");
   }
 
-  return res.json();
+  return res.json() as Promise<LoginResponse>;
 }
 
 export async function fetchAvailablePlaces(
@@ -85,8 +85,8 @@ export async function markNoShow(bookingId: number) {
   return res.json();
 }
 
-export async function fetchMe(): Promise<{ username: string; role: string }> {
-  return apiGet<{ username: string; role: string }>("/me");
+export async function fetchMe(): Promise<CurrentUser> {
+  return apiGet<CurrentUser>("/me");
 }
 
 export async function fetchPlaces(): Promise<Place[]> {
