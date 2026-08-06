@@ -698,17 +698,6 @@ export function CampingMap({
     <span
         style={{
           ...legendDotStyle,
-          backgroundColor: "rgba(59,130,246,0.45)",
-          borderColor: "#2563eb",
-        }}
-    />
-            Passend zur Suche
-          </div>
-
-          <div style={legendItemStyle}>
-    <span
-        style={{
-          ...legendDotStyle,
           backgroundColor: "rgba(37,99,235,0.26)",
           borderColor: "#2563eb",
         }}
