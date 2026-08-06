@@ -9,6 +9,10 @@ interface Props {
   bookings: Booking[];
   onBookingCreated: () => void | Promise<void>;
   canEditPlaces: boolean;
+  initialStartDate?: string;
+  initialEndDate?: string;
+  initialVehicleLengthM?: string;
+  onBookingFinished?: () => void;
 }
 
 function formatDate(dateString: string) {
@@ -101,7 +105,7 @@ function getNextWeekRange() {
 const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese", "Gesperrt"] as const;
 const CUSTOM_PLACE_TYPE = "__custom__";
 
-export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces }: Props) {
+export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces, initialStartDate = "", initialEndDate = "", initialVehicleLengthM = "", onBookingFinished, }: Props) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -136,13 +140,22 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
       }
 
       setErrorMessage(null);
-      setStartDate("");
-      setEndDate("");
-      setGuestName("");
-      setVehicleLengthM("");
-      setNotes("");
+        setStartDate(initialStartDate);
+        setEndDate(initialEndDate);
+        setGuestName("");
+
+        setVehicleLengthM(
+          currentType === "Zeltwiese" ? "" : initialVehicleLengthM
+        );
+
+        setNotes("");
     }
-  }, [place]);
+      }, [
+      place,
+      initialStartDate,
+      initialEndDate,
+      initialVehicleLengthM,
+    ]);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -238,6 +251,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
     });
 
     await onBookingCreated();
+    onBookingFinished?.();
     setStartDate("");
     setEndDate("");
     setGuestName("");

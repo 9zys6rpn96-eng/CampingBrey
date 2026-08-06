@@ -598,6 +598,10 @@ async function reloadData() {
                         currentUser.role === "developer" ||
                         currentUser.role === "operator"
                       }
+                      initialStartDate={searchStartDate}
+                      initialEndDate={searchEndDate}
+                      initialVehicleLengthM={vehicleLengthM}
+                      onBookingFinished={() => setSelectedPlaceId(null)}
                     />
                   </section>
                 )}
