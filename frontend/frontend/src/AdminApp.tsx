@@ -15,6 +15,7 @@ import { PlaceList } from "./components/PlaceList.tsx";
 import { CampingMap } from "./components/CampingMap";
 import { BookingOverview } from "./components/BookingOverview";
 import { NewBooking } from "./components/NewBooking";
+import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -96,6 +97,9 @@ function AdminApp() {
   const [users, setUsers] = useState<User[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [placeModalTab, setPlaceModalTab] = useState<
+  "booking" | "details"
+>("booking");
 
   useEffect(() => {
     async function loadCurrentUser() {
@@ -334,13 +338,14 @@ async function reloadData() {
   }
 }
   function handleSelectPlace(placeId: number) {
-  if (selectedPlaceId === placeId) {
+  if (selectedPlaceId === placeId && bookingModalOpen) {
     setSelectedPlaceId(null);
     setBookingModalOpen(false);
     return;
   }
 
   setSelectedPlaceId(placeId);
+  setPlaceModalTab("booking");
   setBookingModalOpen(true);
 }
 
@@ -616,53 +621,100 @@ async function reloadData() {
                 </div>
 
                 <button
-                  type="button"
-                  onClick={() => {
-                    setBookingModalOpen(false);
-                    setSelectedPlaceId(null);
-                  }}
-                  style={bookingModalCloseStyle}
-                  aria-label="Fenster schließen"
+                    type="button"
+                    onClick={() => {
+                      setBookingModalOpen(false);
+                      setSelectedPlaceId(null);
+                    }}
+                    style={bookingModalCloseStyle}
+                    aria-label="Fenster schließen"
                 >
                   ✕
                 </button>
               </div>
 
-              <NewBooking
-                place={selectedPlace}
-                bookings={bookingsForSelectedPlace}
-                initialStartDate={searchStartDate}
-                initialEndDate={searchEndDate}
-                initialVehicleLengthM={vehicleLengthM}
-                canEditPlace={
-                  currentUser.role === "developer" ||
-                  currentUser.role === "operator"
-                }
-                onPlaceUpdated={reloadData}
-                onBookingCreated={reloadData}
-                onBookingFinished={() => {
-                  setBookingModalOpen(false);
-                  setSelectedPlaceId(null);
-                }}
-              />
+              <div style={modalTabRowStyle}>
+                <button
+                    type="button"
+                    onClick={() => setPlaceModalTab("booking")}
+                    style={{
+                      ...modalTabButtonStyle,
+                      ...(placeModalTab === "booking"
+                          ? activeModalTabButtonStyle
+                          : {}),
+                    }}
+                >
+                  ➕ Neue Buchung
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setPlaceModalTab("details")}
+                    style={{
+                      ...modalTabButtonStyle,
+                      ...(placeModalTab === "details"
+                          ? activeModalTabButtonStyle
+                          : {}),
+                    }}
+                >
+                  📋 Platzdetails & Buchungen
+                </button>
+              </div>
+
+              {placeModalTab === "booking" ? (
+                <NewBooking
+                  place={selectedPlace}
+                  bookings={bookingsForSelectedPlace}
+                  initialStartDate={searchStartDate}
+                  initialEndDate={searchEndDate}
+                  initialVehicleLengthM={vehicleLengthM}
+                  canEditPlace={
+                    currentUser.role === "developer" ||
+                    currentUser.role === "operator"
+                  }
+                  onPlaceUpdated={reloadData}
+                  onBookingCreated={reloadData}
+                  onBookingFinished={() => {
+                    setBookingModalOpen(false);
+                    setSelectedPlaceId(null);
+                  }}
+                />
+              ) : (
+                <PlaceDetailPanel
+                  place={selectedPlace}
+                  bookings={bookingsForSelectedPlace}
+                  onBookingCreated={reloadData}
+                  canEditPlaces={
+                    currentUser.role === "developer" ||
+                    currentUser.role === "operator"
+                  }
+                  initialStartDate={searchStartDate}
+                  initialEndDate={searchEndDate}
+                  initialVehicleLengthM={vehicleLengthM}
+                  onBookingFinished={() => {
+                    setBookingModalOpen(false);
+                    setSelectedPlaceId(null);
+                  }}
+                />
+              )}
             </div>
           </div>
         )}
 
-                {currentUser.role === "developer" && (
-        <section style={{ ...cardStyle, marginTop: "1rem" }}>
-          <div style={cardHeaderStyle}>
-            <div>
-              <h2 style={cardTitleStyle}>Benutzer anlegen</h2>
-              <p style={cardSubtitleStyle}>
-                Neuen Operator, Developer oder User für die Anwendung anlegen.
-              </p>
-            </div>
-          </div>
+        {currentUser.role === "developer" && (
+            <section style={{...cardStyle, marginTop: "1rem"}}>
+              <div style={cardHeaderStyle}>
+                <div>
+                  <h2 style={cardTitleStyle}>Benutzer anlegen</h2>
+                  <p style={cardSubtitleStyle}>
+                    Neuen Operator, Developer oder User für die Anwendung anlegen.
+                  </p>
+                </div>
+              </div>
 
-          <div style={formRowStyle}>
-            <div style={fieldBlockStyle}>
-              <label style={labelStyle}>Benutzername</label>
+              <div style={formRowStyle}>
+                <div style={fieldBlockStyle}>
+                  <label style={labelStyle}>Benutzername</label>
               <input
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
@@ -1170,6 +1222,31 @@ const bookingModalCloseStyle: React.CSSProperties = {
   cursor: "pointer",
   fontSize: "1rem",
   flexShrink: 0,
+};
+
+const modalTabRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "0.6rem",
+  flexWrap: "wrap",
+  marginBottom: "1rem",
+  paddingBottom: "1rem",
+  borderBottom: `1px solid ${colors.border}`,
+};
+
+const modalTabButtonStyle: React.CSSProperties = {
+  padding: "0.65rem 0.9rem",
+  borderRadius: "0.75rem",
+  border: `1px solid ${colors.border}`,
+  backgroundColor: "#ffffff",
+  color: colors.muted,
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const activeModalTabButtonStyle: React.CSSProperties = {
+  border: `1px solid ${colors.brand}`,
+  backgroundColor: colors.brandSoft,
+  color: colors.brandDark,
 };
 
 export default AdminApp;
