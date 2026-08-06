@@ -115,6 +115,7 @@ export async function createBooking(data: {
   end_date: string;
   guest_name: string;
   vehicle_size: string;
+  tent_count?: number | null;
   notes: string;
 }) {
   const token = getAuthToken();
@@ -240,6 +241,7 @@ export async function updateBooking(
     end_date: string;
     guest_name: string;
     vehicle_size: string;
+    tent_count?: number | null;
     notes: string;
   }
 ) {

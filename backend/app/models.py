@@ -17,15 +17,16 @@ class Booking(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     place_id = Column(Integer, ForeignKey("places.id"))
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=False)
-
-    guest_name = Column(String, nullable=False)
-    vehicle_size = Column(String, nullable=True)
-    notes = Column(String, nullable=True)
-    status = Column(String, default="active")
 
     place = relationship("Place", back_populates="bookings")
+
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    guest_name = Column(String, nullable=False)
+    vehicle_size = Column(String, nullable=True)
+    tent_count = Column(Integer, nullable=True)
+    notes = Column(String, nullable=True)
+    status = Column(String, nullable=True)
     created_by = Column(String, nullable=True)
 
 class User(Base):

@@ -51,6 +51,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const [editEndDate, setEditEndDate] = useState("");
   const [editVehicleSize, setEditVehicleSize] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editTentCount, setEditTentCount] = useState("1");
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const sortedBookings = useMemo(
@@ -104,6 +105,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   setEditEndDate(booking.end_date);
   setEditVehicleSize(booking.vehicle_size || "");
   setEditNotes(booking.notes || "");
+  setEditTentCount(String(booking.tent_count ?? 1));
   setEditError(null);
 }
 
@@ -148,6 +150,10 @@ async function handleSaveBooking() {
       end_date: editEndDate,
       guest_name: editGuestName.trim(),
       vehicle_size: editVehicleSize.trim(),
+      tent_count:
+      places.find((p) => p.id === editPlaceId)?.type === "Zeltwiese"
+        ? Number(editTentCount)
+        : null,
       notes: editNotes.trim(),
     });
 
@@ -378,14 +384,31 @@ async function handleSaveBooking() {
 
         <div>
           <label style={formLabelStyle}>
-            Fahrzeuglänge / Zeltgröße
+            {places.find((p) => p.id === editPlaceId)?.type === "Zeltwiese"
+              ? "⛺ Zeltgröße"
+              : "🚐 Fahrzeuglänge"}
           </label>
+
           <input
             value={editVehicleSize}
             onChange={(e) => setEditVehicleSize(e.target.value)}
             style={formInputStyle}
           />
         </div>
+
+        {places.find((p) => p.id === editPlaceId)?.type === "Zeltwiese" && (
+          <div>
+            <label style={formLabelStyle}>🏕️ Anzahl Zelte</label>
+
+            <input
+              type="number"
+              min="1"
+              value={editTentCount}
+              onChange={(e) => setEditTentCount(e.target.value)}
+              style={formInputStyle}
+            />
+          </div>
+        )}
 
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={formLabelStyle}>Notizen</label>

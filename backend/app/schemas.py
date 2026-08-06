@@ -40,11 +40,13 @@ class BookingBase(BaseModel):
     end_date: date
     guest_name: str
     vehicle_size: str | None = None
+    tent_count: int | None = None
     notes: str | None = None
 
 
 class BookingCreate(BookingBase):
     place_id: int
+
 
 class BookingUpdate(BaseModel):
     place_id: int
@@ -52,6 +54,7 @@ class BookingUpdate(BaseModel):
     end_date: date
     guest_name: str
     vehicle_size: str | None = None
+    tent_count: int | None = None
     notes: str | None = None
 
 

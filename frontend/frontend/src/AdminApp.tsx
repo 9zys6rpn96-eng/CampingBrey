@@ -12,9 +12,9 @@ import {
   deleteUser,
 } from "./services/api";
 import { PlaceList } from "./components/PlaceList.tsx";
-import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
 import { CampingMap } from "./components/CampingMap";
 import { BookingOverview } from "./components/BookingOverview";
+import { NewBooking } from "./components/NewBooking";
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -95,6 +95,7 @@ function AdminApp() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadCurrentUser() {
@@ -333,8 +334,15 @@ async function reloadData() {
   }
 }
   function handleSelectPlace(placeId: number) {
-    setSelectedPlaceId((prev) => (prev === placeId ? null : placeId));
+  if (selectedPlaceId === placeId) {
+    setSelectedPlaceId(null);
+    setBookingModalOpen(false);
+    return;
   }
+
+  setSelectedPlaceId(placeId);
+  setBookingModalOpen(true);
+}
 
   if (authLoading) {
     return (
@@ -576,36 +584,6 @@ async function reloadData() {
                   />
                 </section>
 
-                {selectedPlace && (
-                  <section style={cardStyle}>
-                    <div style={cardHeaderStyle}>
-                      <div>
-                        <h2 style={cardTitleStyle}>
-                          Buchung für Platz {selectedPlace.name}
-                        </h2>
-
-                        <p style={cardSubtitleStyle}>
-                          Gastdaten und Buchungszeitraum direkt erfassen.
-                        </p>
-                      </div>
-                    </div>
-
-                    <PlaceDetailPanel
-                      place={selectedPlace}
-                      bookings={bookingsForSelectedPlace}
-                      onBookingCreated={reloadData}
-                      canEditPlaces={
-                        currentUser.role === "developer" ||
-                        currentUser.role === "operator"
-                      }
-                      initialStartDate={searchStartDate}
-                      initialEndDate={searchEndDate}
-                      initialVehicleLengthM={vehicleLengthM}
-                      onBookingFinished={() => setSelectedPlaceId(null)}
-                    />
-                  </section>
-                )}
-
                 <BookingOverview
                   bookings={bookings}
                   places={places}
@@ -614,6 +592,63 @@ async function reloadData() {
               </main>
             </div>
         )}
+
+        {bookingModalOpen && selectedPlace && (
+          <div
+            style={bookingModalOverlayStyle}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setBookingModalOpen(false);
+                setSelectedPlaceId(null);
+              }
+            }}
+          >
+            <div style={bookingModalCardStyle}>
+              <div style={bookingModalHeaderStyle}>
+                <div>
+                  <h2 style={bookingModalTitleStyle}>
+                    Neue Buchung – Platz {selectedPlace.name}
+                  </h2>
+
+                  <p style={cardSubtitleStyle}>
+                    Gastdaten und Buchungszeitraum direkt erfassen.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBookingModalOpen(false);
+                    setSelectedPlaceId(null);
+                  }}
+                  style={bookingModalCloseStyle}
+                  aria-label="Fenster schließen"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <NewBooking
+                place={selectedPlace}
+                bookings={bookingsForSelectedPlace}
+                initialStartDate={searchStartDate}
+                initialEndDate={searchEndDate}
+                initialVehicleLengthM={vehicleLengthM}
+                canEditPlace={
+                  currentUser.role === "developer" ||
+                  currentUser.role === "operator"
+                }
+                onPlaceUpdated={reloadData}
+                onBookingCreated={reloadData}
+                onBookingFinished={() => {
+                  setBookingModalOpen(false);
+                  setSelectedPlaceId(null);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
                 {currentUser.role === "developer" && (
         <section style={{ ...cardStyle, marginTop: "1rem" }}>
           <div style={cardHeaderStyle}>
@@ -1081,6 +1116,60 @@ const statsOverviewValueStyle: React.CSSProperties = {
   fontSize: "1.55rem",
   fontWeight: 800,
   color: colors.text,
+};
+
+const bookingModalOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1000,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "1rem",
+  backgroundColor: "rgba(15, 23, 42, 0.5)",
+};
+
+const bookingModalCardStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "1000px",
+  maxHeight: "92vh",
+  overflowY: "auto",
+  padding: "1.25rem",
+  borderRadius: "1rem",
+  backgroundColor: "#ffffff",
+  border: `1px solid ${colors.border}`,
+  boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+  boxSizing: "border-box",
+};
+
+const bookingModalHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "1rem",
+  marginBottom: "1rem",
+};
+
+const bookingModalTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: "1.25rem",
+  fontWeight: 800,
+  color: colors.text,
+};
+
+const bookingModalCloseStyle: React.CSSProperties = {
+  width: "36px",
+  height: "36px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: `1px solid ${colors.border}`,
+  borderRadius: "999px",
+  backgroundColor: "#ffffff",
+  color: colors.muted,
+  cursor: "pointer",
+  fontSize: "1rem",
+  flexShrink: 0,
 };
 
 export default AdminApp;

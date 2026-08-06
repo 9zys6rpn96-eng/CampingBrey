@@ -178,11 +178,14 @@ def calculate_place_status_for_range(
     for day_offset in range(total_days):
         current_day = start_date + timedelta(days=day_offset)
 
-        occupancy = sum(
-            1
-            for booking in bookings
-            if booking.start_date <= current_day < booking.end_date
-        )
+        occupancy = 0
+
+        for booking in bookings:
+            if booking.start_date <= current_day < booking.end_date:
+                if place.type == "Zeltwiese":
+                    occupancy += booking.tent_count or 1
+                else:
+                    occupancy += 1
 
         if occupancy > 0:
             occupied_days += 1
@@ -218,19 +221,26 @@ def would_exceed_capacity(
     existing_bookings: list[models.Booking],
     start_date: date,
     end_date: date,
+    requested_units: int = 1,
 ) -> bool:
     total_days = (end_date - start_date).days
 
     for day_offset in range(total_days):
         current_day = start_date + timedelta(days=day_offset)
+        occupancy = 0
 
-        occupancy = sum(
-            1
-            for existing_booking in existing_bookings
-            if existing_booking.start_date <= current_day < existing_booking.end_date
-        )
+        for existing_booking in existing_bookings:
+            if (
+                existing_booking.start_date
+                <= current_day
+                < existing_booking.end_date
+            ):
+                if place.type == "Zeltwiese":
+                    occupancy += existing_booking.tent_count or 1
+                else:
+                    occupancy += 1
 
-        if occupancy >= place.capacity:
+        if occupancy + requested_units > place.capacity:
             return True
 
     return False
@@ -407,6 +417,19 @@ def update_booking(
         .all()
     )
 
+    requested_units = (
+        booking.tent_count or 1
+        if place.type == "Zeltwiese"
+        else 1
+    )
+
+    if place.type == "Zeltwiese":
+        if booking.tent_count is None or booking.tent_count < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Bitte die Anzahl der Zelte angeben"
+            )
+
     if would_exceed_capacity(
         place=place,
         existing_bookings=overlapping_bookings,
@@ -424,6 +447,7 @@ def update_booking(
     booking.guest_name = updated.guest_name.strip()
     booking.vehicle_size = updated.vehicle_size
     booking.notes = updated.notes
+    booking.tent_count = updated.tent_count
 
     db.commit()
     db.refresh(booking)
@@ -669,6 +693,7 @@ def create_booking(
         end_date=booking.end_date,
         guest_name=booking.guest_name,
         vehicle_size=booking.vehicle_size,
+        tent_count=booking.tent_count,
         notes=booking.notes,
         created_by=current_user.username,
     )

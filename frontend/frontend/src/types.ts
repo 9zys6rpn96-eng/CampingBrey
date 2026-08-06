@@ -15,6 +15,7 @@ export interface Booking {
   end_date: string;
   guest_name: string;
   vehicle_size?: string;
+  tent_count?: number | null;
   notes?: string;
   status?: string;
   created_by?: string;

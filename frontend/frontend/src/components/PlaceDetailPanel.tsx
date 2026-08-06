@@ -119,6 +119,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const [vehicleLengthM, setVehicleLengthM] = useState("");
   const [notes, setNotes] = useState("");
   const [editLengthM, setEditLengthM] = useState("");
+  const [tentCount, setTentCount] = useState("1");
 
   useEffect(() => {
     if (place) {
@@ -187,9 +188,19 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
 
   const nextBooking = upcomingBookings[0] ?? null;
 
-  const currentOccupancy = bookings.filter(
-    (booking) => today >= booking.start_date && today < booking.end_date
-  ).length;
+  const currentOccupancy = bookings
+  .filter(
+    (booking) =>
+      today >= booking.start_date &&
+      today < booking.end_date
+  )
+  .reduce((sum, booking) => {
+    if (currentPlace.type === "Zeltwiese") {
+      return sum + (booking.tent_count ?? 1);
+    }
+
+    return sum + 1;
+  }, 0);
 
   const maxOccupancyInSelectedRange =
     startDate && endDate
@@ -247,6 +258,10 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
             ? vehicleLengthM
             : `${vehicleLengthM} m`
           : "",
+      tent_count:
+          currentPlace.type === "Zeltwiese"
+            ? Number(tentCount)
+            : null,
       notes: notes,
     });
 
@@ -304,63 +319,94 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   }
   const isBlockedPlace = currentPlace.type === "Gesperrt";
   const isPermanentPlace = currentPlace.type === "Dauercamper";
+  const isTentArea = currentPlace.type === "Zeltwiese";
+
+const isTentAreaPartiallyOccupied =
+  isTentArea &&
+  currentOccupancy > 0 &&
+  currentOccupancy < currentPlace.capacity;
+
+const isTentAreaFull =
+  isTentArea &&
+  currentOccupancy >= currentPlace.capacity;
 
   return (
       <div style={{display: "flex", flexDirection: "column", gap: "1rem"}}>
           <section style={heroSectionStyle}>
               <div style={heroLeftStyle}>
                   <div style={eyebrowStyle}>Ausgewählter Platz</div>
+
                   <h2 style={heroTitleStyle}>Platz {currentPlace.name}</h2>
+
                   <div style={metaRowStyle}>
-          <span style={metaBadgeStyle}>
-            {currentPlace.type || "Stellplatz"}
-          </span>
+      <span style={metaBadgeStyle}>
+        {currentPlace.type || "Stellplatz"}
+      </span>
 
                       <span style={metaBadgeStyle}>
-            Kapazität {currentPlace.capacity}
-          </span>
+        Kapazität {currentPlace.capacity}
+      </span>
 
                       <span style={metaBadgeStyle}>
-            📏 {currentPlace.length_m ? `${currentPlace.length_m} m` : "nicht gesetzt"}
-          </span>
+        📏 {currentPlace.length_m ? `${currentPlace.length_m} m` : "nicht gesetzt"}
+      </span>
                   </div>
               </div>
 
               <div
                   style={{
                       ...statusPillStyle,
+
                       backgroundColor: isBlockedPlace
                           ? "#fef3c7"
                           : isPermanentPlace
                               ? "#e5e7eb"
-                              : isCurrentlyBooked
+                              : isTentAreaFull
                                   ? "#fee2e2"
-                                  : "#dcfce7",
+                                  : isTentAreaPartiallyOccupied
+                                      ? "#fef3c7"
+                                      : isCurrentlyBooked
+                                          ? "#fee2e2"
+                                          : "#dcfce7",
 
                       color: isBlockedPlace
                           ? "#92400e"
                           : isPermanentPlace
                               ? "#374151"
-                              : isCurrentlyBooked
+                              : isTentAreaFull
                                   ? "#991b1b"
-                                  : "#166534",
+                                  : isTentAreaPartiallyOccupied
+                                      ? "#92400e"
+                                      : isCurrentlyBooked
+                                          ? "#991b1b"
+                                          : "#166534",
 
                       borderColor: isBlockedPlace
                           ? "#fde68a"
                           : isPermanentPlace
                               ? "#d1d5db"
-                              : isCurrentlyBooked
+                              : isTentAreaFull
                                   ? "#fecaca"
-                                  : "#bbf7d0",
+                                  : isTentAreaPartiallyOccupied
+                                      ? "#fde68a"
+                                      : isCurrentlyBooked
+                                          ? "#fecaca"
+                                          : "#bbf7d0",
                   }}
               >
                   {isBlockedPlace
                       ? "🚧 Gesperrt"
                       : isPermanentPlace
                           ? "⚫ Dauercamper"
-                          : isCurrentlyBooked
-                              ? "🔴 Aktuell belegt"
-                              : "🟢 Aktuell frei"}
+                          : isTentAreaFull
+                              ? `🔴 Voll belegt (${currentOccupancy}/${currentPlace.capacity} Zelte)`
+                              : isTentAreaPartiallyOccupied
+                                  ? `🟡 Teilbelegt (${currentOccupancy}/${currentPlace.capacity} Zelte)`
+                                  : isTentArea
+                                      ? `🟢 Frei (0/${currentPlace.capacity} Zelte)`
+                                      : isCurrentlyBooked
+                                          ? "🔴 Aktuell belegt"
+                                          : "🟢 Aktuell frei"}
               </div>
           </section>
 
@@ -436,25 +482,40 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
                   </div>
 
                   <div>
-                      <label style={labelStyle}>
-                          {currentPlace.type === "Zeltwiese"
-                              ? "⛺ Zeltgröße"
-                              : "🚐 Fahrzeuglänge in m"}
-                      </label>
+                        <label style={labelStyle}>
+                            {currentPlace.type === "Zeltwiese"
+                                ? "⛺ Zeltgröße"
+                                : "🚐 Fahrzeuglänge in m"}
+                        </label>
 
-                      <input
-                          type="text"
-                          inputMode={currentPlace.type === "Zeltwiese" ? "text" : "decimal"}
-                          value={vehicleLengthM}
-                          onChange={(e) => setVehicleLengthM(e.target.value)}
-                          placeholder={
-                              currentPlace.type === "Zeltwiese"
-                                  ? "z.B. Familienzelt / 4x3 m"
-                                  : "z.B. 7,5"
-                          }
+                        <input
+                            type="text"
+                            inputMode={currentPlace.type === "Zeltwiese" ? "text" : "decimal"}
+                            value={vehicleLengthM}
+                            onChange={(e) => setVehicleLengthM(e.target.value)}
+                            placeholder={
+                                currentPlace.type === "Zeltwiese"
+                                    ? "z.B. Familienzelt / 4x3 m"
+                                    : "z.B. 7,5"
+                            }
+                            style={inputStyle}
+                        />
+                    </div>
+
+                    {currentPlace.type === "Zeltwiese" && (
+                      <div>
+                        <label style={labelStyle}>🏕️ Anzahl Zelte</label>
+
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={tentCount}
+                          onChange={(e) => setTentCount(e.target.value)}
                           style={inputStyle}
-                      />
-                  </div>
+                        />
+                      </div>
+                    )}
 
                   <div style={{gridColumn: "1 / -1"}}>
                       <label style={labelStyle}>Weitere Informationen</label>
@@ -552,11 +613,17 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
 
           <section style={statsGridStyle}>
               <div style={statCardStyle}>
-                  <div style={statLabelStyle}>Aktuelle Belegung</div>
+                  <div style={statLabelStyle}>
+                      {isTentArea ? "Aktuelle Zeltbelegung" : "Aktuelle Belegung"}
+                  </div>
                   <div style={statValueStyle}>
                       {currentOccupancy} / {currentPlace.capacity}
                   </div>
-                  <div style={statHelpStyle}>gleichzeitig belegte Einheiten heute</div>
+                  <div style={statHelpStyle}>
+                      {isTentArea
+                          ? "aktuell belegte Zelte"
+                          : "gleichzeitig belegte Einheiten heute"}
+                  </div>
               </div>
 
               <div style={statCardStyle}>

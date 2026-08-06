@@ -20,19 +20,33 @@ function getStatusColor(status?: PlaceStatus | null) {
   return "#dc2626";
 }
 
-function getStatusLabel(status?: PlaceStatus | null) {
+function getPlaceTypeLabel(type?: string | null) {
+  if (!type) return "Stellplatz";
+  return type;
+}
+
+function getStatusText(place: Place, status?: PlaceStatus | null) {
   if (!status) return "Unbekannt";
+
+  if (place.type === "Zeltwiese") {
+    if (status.status === "gray") return "Dauercamper";
+
+    if (status.status === "red") {
+      return ` ${status.max_occupancy}/${place.capacity} Zelte`;
+    }
+
+    if (status.status === "yellow") {
+      return ` ${status.max_occupancy}/${place.capacity} Zelte`;
+    }
+
+    return ` ${status.max_occupancy}/${place.capacity} Zelte`;
+  }
 
   if (status.status === "gray") return "Dauercamper";
   if (status.status === "green") return "Frei";
   if (status.status === "yellow") return "Teilbelegt";
 
   return "Voll belegt";
-}
-
-function getPlaceTypeLabel(type?: string | null) {
-  if (!type) return "Stellplatz";
-  return type;
 }
 
 export function PlaceList({
@@ -205,7 +219,7 @@ export function PlaceList({
                       ...(isSelected ? selectedPlaceMetaStyle : {}),
                     }}
                   >
-                    {getStatusLabel(status)}
+                    {getStatusText(place, status)}
                   </span>
                 </div>
               </button>
