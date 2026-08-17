@@ -38,6 +38,14 @@ def derive_people_count(adult_count: int, child_count: int) -> int:
     return max(0, adult_count) + max(0, child_count)
 
 
+def normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    normalized = value.strip()
+    return normalized or None
+
+
 def run_schema_migrations():
     inspector = inspect(engine)
 
@@ -66,6 +74,11 @@ def run_schema_migrations():
 
             if "guest_city" not in booking_columns:
                 connection.execute(text("ALTER TABLE bookings ADD COLUMN guest_city VARCHAR"))
+
+            # Falls keine echte Migrationslösung genutzt wird, muss folgendes SQL lokal und auf dem Server ausgeführt werden:
+            # ALTER TABLE bookings ADD COLUMN IF NOT EXISTS nationality VARCHAR;
+            if "nationality" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN nationality VARCHAR"))
 
             if "people_count" not in booking_columns:
                 connection.execute(
@@ -692,7 +705,7 @@ def update_booking(
     derived_camper_length = updated.camper_length_m or parse_vehicle_size_length(updated.vehicle_size)
 
     if updated.camper_count > 0 and (derived_camper_length is None or derived_camper_length <= 0):
-        raise HTTPException(status_code=400, detail="Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen angeben")
+        raise HTTPException(status_code=400, detail="Bitte eine gültige Fahrzeuglänge für Wohnmobil/Wohnwagen angeben")
 
     updated.people_count = derived_people_count
     updated.camper_length_m = derived_camper_length
@@ -718,12 +731,13 @@ def update_booking(
     booking.guest_street = updated.guest_street
     booking.guest_postal_code = updated.guest_postal_code
     booking.guest_city = updated.guest_city
+    booking.nationality = normalize_optional_text(updated.nationality)
     booking.people_count = derive_people_count(updated.adult_count, updated.child_count)
     booking.adult_count = updated.adult_count
     booking.child_count = updated.child_count
     booking.day_visitor_count = updated.day_visitor_count
     booking.has_electricity = updated.has_electricity
-    booking.has_waste = updated.has_waste
+    booking.has_waste = True
     booking.has_rhine_view = updated.has_rhine_view
     booking.dog_count = updated.dog_count
     booking.car_count = updated.car_count
@@ -975,7 +989,7 @@ def create_booking(
     derived_camper_length = booking.camper_length_m or parse_vehicle_size_length(booking.vehicle_size)
 
     if booking.camper_count > 0 and (derived_camper_length is None or derived_camper_length <= 0):
-        raise HTTPException(status_code=400, detail="Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen angeben")
+        raise HTTPException(status_code=400, detail="Bitte eine gültige Fahrzeuglänge für Wohnmobil/Wohnwagen angeben")
 
     booking.people_count = derived_people_count
     booking.camper_length_m = derived_camper_length
@@ -1046,12 +1060,13 @@ def create_booking(
         guest_street=booking.guest_street,
         guest_postal_code=booking.guest_postal_code,
         guest_city=booking.guest_city,
+        nationality=normalize_optional_text(booking.nationality),
         people_count=derived_people_count,
         adult_count=booking.adult_count,
         child_count=booking.child_count,
         day_visitor_count=booking.day_visitor_count,
         has_electricity=booking.has_electricity,
-        has_waste=booking.has_waste,
+        has_waste=True,
         has_rhine_view=booking.has_rhine_view,
         dog_count=booking.dog_count,
         car_count=booking.car_count,
@@ -1119,7 +1134,7 @@ def get_booking_receipt(
             child_count=booking.child_count,
             day_visitor_count=booking.day_visitor_count,
             has_electricity=booking.has_electricity,
-            has_waste=booking.has_waste,
+            has_waste=True,
             has_rhine_view=booking.has_rhine_view,
             dog_count=booking.dog_count,
             car_count=booking.car_count,
@@ -1152,6 +1167,7 @@ def get_booking_receipt(
             "street": booking.guest_street,
             "postal_code": booking.guest_postal_code,
             "city": booking.guest_city,
+            "nationality": booking.nationality,
         },
         "stay": {
             "start_date": booking.start_date,
@@ -1173,7 +1189,7 @@ def get_booking_receipt(
             "camper_length_m": booking.camper_length_m,
             "dog_count": booking.dog_count,
             "has_electricity": booking.has_electricity,
-            "has_waste": booking.has_waste,
+            "has_waste": True,
             "has_rhine_view": booking.has_rhine_view,
             "vehicle_size": booking.vehicle_size,
             "notes": booking.notes,
@@ -1202,3 +1218,7 @@ def delete_booking(
     db.commit()
 
     return {"message": "Booking deleted"}
+
+
+
+

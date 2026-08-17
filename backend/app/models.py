@@ -28,6 +28,7 @@ class Booking(Base):
     guest_street = Column(String, nullable=True)
     guest_postal_code = Column(String, nullable=True)
     guest_city = Column(String, nullable=True)
+    nationality = Column(String, nullable=True)
     people_count = Column(Integer, nullable=False, default=1)
     adult_count = Column(Integer, nullable=False, default=1)
     child_count = Column(Integer, nullable=False, default=0)

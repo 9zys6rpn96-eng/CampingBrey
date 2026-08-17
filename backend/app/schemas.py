@@ -44,6 +44,7 @@ class BookingBase(BaseModel):
     guest_street: str | None = None
     guest_postal_code: str | None = None
     guest_city: str | None = None
+    nationality: str | None = None
     people_count: int = Field(default=0, ge=0)
     adult_count: int = Field(default=1, ge=0)
     child_count: int = Field(default=0, ge=0)
@@ -75,6 +76,7 @@ class BookingUpdate(BaseModel):
     guest_street: str | None = None
     guest_postal_code: str | None = None
     guest_city: str | None = None
+    nationality: str | None = None
     people_count: int = Field(default=0, ge=0)
     adult_count: int = Field(default=1, ge=0)
     child_count: int = Field(default=0, ge=0)
@@ -110,6 +112,7 @@ class ReceiptGuest(BaseModel):
     street: str | None = None
     postal_code: str | None = None
     city: str | None = None
+    nationality: str | None = None
 
 
 class ReceiptStay(BaseModel):

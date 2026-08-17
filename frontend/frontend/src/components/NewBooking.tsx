@@ -129,11 +129,11 @@ export function NewBooking({
   const [guestStreet, setGuestStreet] = useState("");
   const [guestPostalCode, setGuestPostalCode] = useState("");
   const [guestCity, setGuestCity] = useState("");
+  const [nationality, setNationality] = useState("");
   const [adultCount, setAdultCount] = useState("1");
   const [childCount, setChildCount] = useState("0");
   const [dayVisitorCount, setDayVisitorCount] = useState("0");
   const [hasElectricity, setHasElectricity] = useState(false);
-  const [hasWaste, setHasWaste] = useState(false);
   const [hasRhineView, setHasRhineView] = useState(false);
   const [dogCount, setDogCount] = useState("0");
   const [carCount, setCarCount] = useState("0");
@@ -182,11 +182,11 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
     setGuestStreet("");
     setGuestPostalCode("");
     setGuestCity("");
+    setNationality("");
     setAdultCount("1");
     setChildCount("0");
     setDayVisitorCount("0");
     setHasElectricity(false);
-    setHasWaste(false);
     setHasRhineView(false);
     setDogCount("0");
     setCarCount("0");
@@ -253,12 +253,12 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
           guest_street: guestStreet.trim(),
           guest_postal_code: guestPostalCode.trim(),
           guest_city: guestCity.trim(),
+          nationality: nationality.trim() || undefined,
           people_count: (Number(adultCount) || 0) + (Number(childCount) || 0),
           adult_count: Number(adultCount) || 0,
           child_count: Number(childCount) || 0,
           day_visitor_count: Number(dayVisitorCount) || 0,
           has_electricity: hasElectricity,
-          has_waste: hasWaste,
           has_rhine_view: hasRhineView,
           dog_count: Number(dogCount) || 0,
           car_count: Number(carCount) || 0,
@@ -288,11 +288,11 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
     guestStreet,
     guestPostalCode,
     guestCity,
+    nationality,
     adultCount,
     childCount,
     dayVisitorCount,
     hasElectricity,
-    hasWaste,
     hasRhineView,
     dogCount,
     carCount,
@@ -391,7 +391,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
 
     const parsedDogCount = Number(dogCount);
     if (!Number.isInteger(parsedDogCount) || parsedDogCount < 0) {
-      setErrorMessage("Bitte eine gueltige Anzahl Hunde eingeben.");
+      setErrorMessage("Bitte eine gültige Anzahl Hunde eingeben.");
       return;
     }
 
@@ -410,7 +410,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
       !Number.isInteger(parsedMotorcycleCount) || parsedMotorcycleCount < 0 ||
       !Number.isInteger(parsedCamperCount) || parsedCamperCount < 0
     ) {
-      setErrorMessage("Bitte nur gueltige, nicht-negative Mengen eingeben.");
+      setErrorMessage("Bitte nur gültige, nicht-negative Mengen eingeben.");
       return;
     }
 
@@ -421,12 +421,12 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
 
     if (parsedCamperCount > 0) {
       if (parsedVehicleLength === null || !Number.isFinite(parsedVehicleLength) || parsedVehicleLength <= 0) {
-        setErrorMessage("Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen eingeben.");
+        setErrorMessage("Bitte eine gültige Fahrzeuglänge für Wohnmobil/Wohnwagen eingeben.");
         return;
       }
 
       if (parsedVehicleLength > 8 && parsedVehicleLength <= 10) {
-        setErrorMessage("Tarif fuer Fahrzeuglaengen zwischen 8 m und 10 m ist nicht definiert.");
+        setErrorMessage("Tarif für Fahrzeuglängen zwischen 8 m und 10 m ist nicht definiert.");
         return;
       }
     }
@@ -460,7 +460,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
       }
 
       if (parsedTentCount > 0 && !tentTariffCode) {
-        setErrorMessage("Bitte einen Zelt-Tarif auswaehlen.");
+        setErrorMessage("Bitte einen Zelt-Tarif auswählen.");
         return;
       }
     } else if (vehicleSize.trim() !== "") {
@@ -511,12 +511,12 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         guest_street: guestStreet.trim(),
         guest_postal_code: guestPostalCode.trim(),
         guest_city: guestCity.trim(),
+          nationality: nationality.trim() || undefined,
         people_count: parsedAdultCount + parsedChildCount,
         adult_count: parsedAdultCount,
         child_count: parsedChildCount,
         day_visitor_count: parsedDayVisitorCount,
         has_electricity: hasElectricity,
-        has_waste: hasWaste,
         has_rhine_view: hasRhineView,
         dog_count: parsedDogCount,
         car_count: parsedCarCount,
@@ -544,13 +544,13 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
       setGuestStreet("");
       setGuestPostalCode("");
       setGuestCity("");
+      setNationality("");
       setVehicleSize("");
       setTentCount("1");
       setAdultCount("1");
       setChildCount("0");
       setDayVisitorCount("0");
       setHasElectricity(false);
-      setHasWaste(false);
       setHasRhineView(false);
       setDogCount("0");
       setCarCount("0");
@@ -785,7 +785,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         </div>
 
         <div>
-          <label style={labelStyle}>Strasse und Hausnummer</label>
+          <label style={labelStyle}>Straße und Hausnummer</label>
           <input
             value={guestStreet}
             onChange={(e) => setGuestStreet(e.target.value)}
@@ -807,6 +807,16 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
           <input
             value={guestCity}
             onChange={(e) => setGuestCity(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Nationalität</label>
+          <input
+            value={nationality}
+            onChange={(e) => setNationality(e.target.value)}
+            placeholder="z. B. Deutsch"
             style={inputStyle}
           />
         </div>
@@ -846,7 +856,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
               onChange={(e) => setTentTariffCode(e.target.value)}
               style={inputStyle}
             >
-              <option value="">Bitte waehlen</option>
+              <option value="">Bitte wählen</option>
               {tariffs
                 .filter((tariff) => tariff.code.startsWith("tent_"))
                 .map((tariff) => (
@@ -948,18 +958,6 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         </div>
 
         <div>
-          <label style={labelStyle}>Muell</label>
-          <label style={checkboxLabelStyle}>
-            <input
-              type="checkbox"
-              checked={hasWaste}
-              onChange={(e) => setHasWaste(e.target.checked)}
-            />
-            Muellpauschale pro Tag
-          </label>
-        </div>
-
-        <div>
           <label style={labelStyle}>Erste Reihe mit Rheinblick</label>
           <label style={checkboxLabelStyle}>
             <input
@@ -1014,14 +1012,14 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
 
       {(quote || quoteError) && (
         <div style={pricePreviewBoxStyle}>
-          <div style={pricePreviewTitleStyle}>Preisuebersicht</div>
+          <div style={pricePreviewTitleStyle}>Preisübersicht</div>
           {quoteError && <div style={errorTextStyle}>{quoteError}</div>}
 
           {quote && (
             <>
               <div style={pricePreviewTotalStyle}>Gesamt: {formatEuro(quote.total)}</div>
               <div style={pricePreviewMetaStyle}>
-                {quote.nights} {quote.nights === 1 ? "Nacht" : "Naechte"} / {quote.days} {quote.days === 1 ? "Tag" : "Tage"}
+                {quote.nights} {quote.nights === 1 ? "Nacht" : "Nächte"} / {quote.days} {quote.days === 1 ? "Tag" : "Tage"}
               </div>
 
               <div style={priceItemListStyle}>
@@ -1300,3 +1298,7 @@ const placeEditPanelStyle: React.CSSProperties = {
   border: "1px solid #d7e4db",
   backgroundColor: "#f8fafc",
 };
+
+
+
+

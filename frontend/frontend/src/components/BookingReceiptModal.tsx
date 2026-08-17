@@ -32,10 +32,10 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
       <div style={modalCardStyle}>
         <div style={actionsStyle}>
           <button type="button" onClick={() => printBookingReceipt(receipt)} style={printButtonStyle}>
-            Drucken / als PDF speichern
+            Abrechnung drucken / als PDF speichern
           </button>
           <button type="button" onClick={onClose} style={closeButtonStyle}>
-            Schliessen
+            Schließen
           </button>
         </div>
 
@@ -43,7 +43,7 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
           <div style={headerBrandStyle}>Campingplatz Wilhelm</div>
           <div style={headerLocationStyle}>Brey am Rhein</div>
 
-          <h1 style={titleStyle}>AUFENTHALTS- UND ABRECHNUNGSNACHWEIS</h1>
+          <h1 style={titleStyle}>AUFENTHALTS- UND ABRECHNUNGSBELEG</h1>
 
           <section style={sectionStyle}>
             <div style={sectionLabelStyle}>Gast:</div>
@@ -52,6 +52,7 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
             <div>
               {[receipt.guest.postal_code, receipt.guest.city].filter(Boolean).join(" ") || "-"}
             </div>
+            {receipt.guest.nationality && <div>Nationalität: {receipt.guest.nationality}</div>}
           </section>
 
           <section style={sectionStyleRowStyle}>
@@ -68,7 +69,7 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
                 {formatDate(receipt.stay.start_date)} - {formatDate(receipt.stay.end_date)}
               </div>
               <div>
-                {receipt.stay.nights} {receipt.stay.nights === 1 ? "Uebernachtung" : "Uebernachtungen"}
+                {receipt.stay.nights} {receipt.stay.nights === 1 ? "Übernachtung" : "Übernachtungen"}
               </div>
             </div>
           </section>
@@ -105,10 +106,10 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
 
           <section style={sectionStyle}>
             <div style={sectionLabelStyle}>Zahlung:</div>
-            <div>siehe gesonderter Kassenbeleg</div>
+            <div>siehe gesonderten Kassenbeleg</div>
           </section>
 
-          <p style={footerTextStyle}>Vielen Dank fuer Ihren Aufenthalt.</p>
+          <p style={footerTextStyle}>Vielen Dank für Ihren Aufenthalt.</p>
         </div>
       </div>
     </div>

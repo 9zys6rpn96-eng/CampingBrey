@@ -21,9 +21,9 @@ DEFAULT_TARIFFS: list[dict] = [
     {"code": "motorcycle_day", "label": "Motorrad", "unit": "Tag", "price": Decimal("2.00")},
     {"code": "camper_lt6_day", "label": "Wohnmobil/Wohnwagen unter 6 m", "unit": "Tag", "price": Decimal("7.00")},
     {"code": "camper_6_8_day", "label": "Wohnmobil/Wohnwagen 6 bis 8 m", "unit": "Tag", "price": Decimal("8.00")},
-    {"code": "camper_gt10_day", "label": "Wohnmobil/Wohnwagen ueber 10 m", "unit": "Tag", "price": Decimal("10.00")},
+    {"code": "camper_gt10_day", "label": "Wohnmobil/Wohnwagen über 10 m", "unit": "Tag", "price": Decimal("10.00")},
     {"code": "electricity_day", "label": "Strom", "unit": "Tag", "price": Decimal("4.00")},
-    {"code": "waste_day", "label": "Muell", "unit": "Tag", "price": Decimal("1.00")},
+    {"code": "waste_day", "label": "Müll", "unit": "Tag", "price": Decimal("1.00")},
     {"code": "rhine_view_once", "label": "Erste Reihe mit Rheinblick", "unit": "einmalig", "price": Decimal("3.00")},
 ]
 
@@ -73,7 +73,14 @@ def _require_tariff(tariffs: dict[str, models.Tariff], code: str) -> models.Tari
     return tariff
 
 
-def _add_item(items: list[dict], description: str, quantity: int, unit: str, unit_price: Decimal, tariff_code: str | None = None):
+def _add_item(
+    items: list[dict],
+    description: str,
+    quantity: int,
+    unit: str,
+    unit_price: Decimal,
+    tariff_code: str | None = None,
+):
     if quantity <= 0:
         return
 
@@ -94,7 +101,7 @@ def _camper_tariff_code(length_m: float | None) -> str:
     if length_m is None or length_m <= 0:
         raise HTTPException(
             status_code=400,
-            detail="Fuer Wohnmobil/Wohnwagen muss eine gueltige Fahrzeuglaenge angegeben werden.",
+            detail="Für Wohnmobil/Wohnwagen muss eine gültige Fahrzeuglänge angegeben werden.",
         )
 
     if length_m < 6:
@@ -106,7 +113,7 @@ def _camper_tariff_code(length_m: float | None) -> str:
 
     raise HTTPException(
         status_code=400,
-        detail="Tarif fuer Fahrzeuglaenge zwischen 8 m und 10 m ist derzeit nicht definiert.",
+        detail="Tarif für Fahrzeuglänge zwischen 8 m und 10 m ist derzeit nicht definiert.",
     )
 
 
@@ -180,11 +187,11 @@ def build_quote(
 
     if (booking.tent_count or 0) > 0:
         if not booking.tent_tariff_code:
-            raise HTTPException(status_code=400, detail="Bitte einen Zelt-Tarif auswaehlen.")
+            raise HTTPException(status_code=400, detail="Bitte einen Zelt-Tarif auswählen.")
 
         tent_tariff = _require_tariff(tariffs, booking.tent_tariff_code)
         if not tent_tariff.code.startswith("tent_"):
-            raise HTTPException(status_code=400, detail="Ungueltiger Zelt-Tarif.")
+            raise HTTPException(status_code=400, detail="Ungültiger Zelt-Tarif.")
 
         tent_count_value = booking.tent_count or 0
         _add_item(
@@ -200,9 +207,8 @@ def build_quote(
         power_tariff = _require_tariff(tariffs, "electricity_day")
         _add_item(items, power_tariff.label, days, power_tariff.unit, Decimal(str(power_tariff.price)), power_tariff.code)
 
-    if booking.has_waste:
-        waste_tariff = _require_tariff(tariffs, "waste_day")
-        _add_item(items, waste_tariff.label, days, waste_tariff.unit, Decimal(str(waste_tariff.price)), waste_tariff.code)
+    waste_tariff = _require_tariff(tariffs, "waste_day")
+    _add_item(items, waste_tariff.label, days, waste_tariff.unit, Decimal(str(waste_tariff.price)), waste_tariff.code)
 
     if booking.has_rhine_view:
         view_tariff = _require_tariff(tariffs, "rhine_view_once")
@@ -240,6 +246,4 @@ def build_quote(
             "total": str(total),
         },
     }
-
-
 

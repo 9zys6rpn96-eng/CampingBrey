@@ -117,6 +117,7 @@ export async function createBooking(data: {
   guest_street?: string;
   guest_postal_code?: string;
   guest_city?: string;
+  nationality?: string;
   people_count?: number;
   adult_count?: number;
   child_count?: number;
@@ -261,6 +262,7 @@ export async function updateBooking(
     guest_street?: string;
     guest_postal_code?: string;
     guest_city?: string;
+    nationality?: string;
     people_count?: number;
     adult_count?: number;
     child_count?: number;
@@ -323,6 +325,7 @@ export async function quoteBooking(data: {
   guest_street?: string;
   guest_postal_code?: string;
   guest_city?: string;
+  nationality?: string;
   people_count?: number;
   adult_count?: number;
   child_count?: number;

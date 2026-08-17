@@ -19,6 +19,7 @@ export interface Booking {
   guest_street?: string | null;
   guest_postal_code?: string | null;
   guest_city?: string | null;
+  nationality?: string | null;
   people_count?: number;
   adult_count?: number;
   child_count?: number;
@@ -74,6 +75,7 @@ export interface BookingReceipt {
     street?: string | null;
     postal_code?: string | null;
     city?: string | null;
+    nationality?: string | null;
   };
   stay: {
     start_date: string;

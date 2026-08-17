@@ -39,6 +39,13 @@ function getStayLength(startDate: string, endDate: string) {
   return nights === 1 ? "1 Nacht" : `${nights} Nächte`;
 }
 
+function getLocalIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function escapeCsvValue(value: string | number | null | undefined) {
   const text = String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
@@ -57,8 +64,8 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const [editGuestStreet, setEditGuestStreet] = useState("");
   const [editGuestPostalCode, setEditGuestPostalCode] = useState("");
   const [editGuestCity, setEditGuestCity] = useState("");
+  const [editNationality, setEditNationality] = useState("");
   const [editHasElectricity, setEditHasElectricity] = useState(false);
-  const [editHasWaste, setEditHasWaste] = useState(false);
   const [editHasRhineView, setEditHasRhineView] = useState(false);
   const [editDogCount, setEditDogCount] = useState("0");
   const [editAdultCount, setEditAdultCount] = useState("1");
@@ -71,7 +78,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const [editPlacePricePerNight, setEditPlacePricePerNight] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
-  const [hidePast, setHidePast] = useState(false);
+  const [hidePast, setHidePast] = useState(true);
   const [receiptLoadingId, setReceiptLoadingId] = useState<number | null>(null);
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [activeReceipt, setActiveReceipt] = useState<BookingReceipt | null>(null);
@@ -84,7 +91,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   [bookings]
 );
 
-  const todayIso = new Date().toISOString().split("T")[0];
+  const todayIso = getLocalIsoDate();
 
   function getPlaceName(placeId: number) {
     return places.find((p) => p.id === placeId)?.name ?? `ID ${placeId}`;
@@ -101,6 +108,7 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
 
     const searchableText = [
       booking.guest_name,
+      booking.nationality,
       placeName,
       `Platz ${placeName}`,
       booking.vehicle_size,
@@ -132,9 +140,9 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
       setEditGuestStreet(booking.guest_street || "");
       setEditGuestPostalCode(booking.guest_postal_code || "");
       setEditGuestCity(booking.guest_city || "");
+          setEditNationality(booking.nationality || "");
       setEditHasElectricity(Boolean(booking.has_electricity));
-          setEditHasWaste(Boolean(booking.has_waste));
-          setEditHasRhineView(Boolean(booking.has_rhine_view));
+      setEditHasRhineView(Boolean(booking.has_rhine_view));
       setEditDogCount(String(booking.dog_count ?? 0));
           setEditAdultCount(String(booking.adult_count ?? booking.people_count ?? 1));
           setEditChildCount(String(booking.child_count ?? 0));
@@ -164,8 +172,8 @@ function closeEditDialog() {
   setEditGuestStreet("");
   setEditGuestPostalCode("");
   setEditGuestCity("");
+  setEditNationality("");
   setEditHasElectricity(false);
-  setEditHasWaste(false);
   setEditHasRhineView(false);
   setEditDogCount("0");
   setEditAdultCount("1");
@@ -221,25 +229,25 @@ async function handleSaveBooking() {
     !Number.isInteger(parsedMotorcycleCount) || parsedMotorcycleCount < 0 ||
     !Number.isInteger(parsedCamperCount) || parsedCamperCount < 0
   ) {
-    setEditError("Bitte nur gueltige, nicht-negative Mengen eingeben.");
+    setEditError("Bitte nur gültige, nicht-negative Mengen eingeben.");
     return;
   }
 
   if (parsedCamperCount > 0) {
     if (parsedVehicleLengthM === null || !Number.isFinite(parsedVehicleLengthM) || parsedVehicleLengthM <= 0) {
-      setEditError("Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen eingeben.");
+      setEditError("Bitte eine gültige Fahrzeuglänge für Wohnmobil/Wohnwagen eingeben.");
       return;
     }
 
     if (parsedVehicleLengthM > 8 && parsedVehicleLengthM <= 10) {
-      setEditError("Tarif fuer Fahrzeuglaengen zwischen 8 m und 10 m ist nicht definiert.");
+      setEditError("Tarif für Fahrzeuglängen zwischen 8 m und 10 m ist nicht definiert.");
       return;
     }
   }
 
   const parsedPlacePricePerNight = Number(editPlacePricePerNight.replace(",", "."));
   if (!Number.isFinite(parsedPlacePricePerNight) || parsedPlacePricePerNight < 0) {
-    setEditError("Bitte einen gueltigen Stellplatzpreis pro Nacht eingeben.");
+    setEditError("Bitte einen gültigen Stellplatzpreis pro Nacht eingeben.");
     return;
   }
 
@@ -255,12 +263,12 @@ async function handleSaveBooking() {
       guest_street: editGuestStreet.trim(),
       guest_postal_code: editGuestPostalCode.trim(),
       guest_city: editGuestCity.trim(),
+      nationality: editNationality.trim() || undefined,
       people_count: parsedAdultCount + parsedChildCount,
       adult_count: parsedAdultCount,
       child_count: parsedChildCount,
       day_visitor_count: parsedDayVisitorCount,
       has_electricity: editHasElectricity,
-      has_waste: editHasWaste,
       has_rhine_view: editHasRhineView,
       dog_count: parsedDogCount,
       car_count: parsedCarCount,
@@ -291,6 +299,7 @@ async function handleSaveBooking() {
       [
         "Platz",
         "Gast",
+        "Nationalität",
         "Von",
         "Bis",
         "Nächte",
@@ -302,6 +311,7 @@ async function handleSaveBooking() {
       ...filteredBookings.map((booking) => [
         getPlaceName(booking.place_id),
         booking.guest_name,
+        booking.nationality || "",
         formatDate(booking.start_date),
         formatDate(booking.end_date),
         getStayLength(booking.start_date, booking.end_date),
@@ -337,7 +347,7 @@ async function handleSaveBooking() {
       const receipt = await fetchBookingReceipt(bookingId);
       setActiveReceipt(receipt);
     } catch (err: any) {
-      setReceiptError(err.message || "Nachweis konnte nicht geladen werden");
+      setReceiptError(err.message || "Abrechnung konnte nicht geladen werden");
     } finally {
       setReceiptLoadingId(null);
     }
@@ -378,7 +388,7 @@ async function handleSaveBooking() {
                 ...(hidePast ? togglePastButtonActiveStyle : {}),
               }}
           >
-            {hidePast ? "🕐 Vergangene anzeigen" : "🗂️ Vergangene ausblenden"}
+            {hidePast ? "🕐 Vergangene Buchungen anzeigen" : "🗂️ Vergangene Buchungen ausblenden"}
           </button>
         </div>
 
@@ -391,7 +401,7 @@ async function handleSaveBooking() {
               type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Gast, Platz, Ersteller, Notiz oder Status suchen …"
+              placeholder="Gast, Platz, Nationalität, Notiz, Status suchen …"
               style={searchInputStyle}
           />
 
@@ -413,53 +423,64 @@ async function handleSaveBooking() {
               <table style={tableStyle}>
                 <thead>
                 <tr>
-                  <th style={thStyle}>Von</th>
-                  <th style={thStyle}>Bis</th>
-                  <th style={thStyle}>Platz</th>
+                  <th style={thNarrowStyle}>Von</th>
+                  <th style={thNarrowStyle}>Bis</th>
+                  <th style={thNarrowStyle}>Platz</th>
                   <th style={thStyle}>Gast</th>
-                  <th style={thStyle}>Nächte</th>
-                  <th style={thStyle}>Fahrzeuglänge / Zeltgröße</th>
-                  <th style={thStyle}>Notizen</th>
-                  <th style={thStyle}>Erstellt von</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Aktionen</th>
+                  <th style={thNarrowStyle}>Nächte</th>
+                  <th style={thNarrowStyle}>Fahrzeug / Zelt</th>
+                  <th style={thWideStyle}>Notizen</th>
+                  <th style={thNarrowStyle}>Erstellt von</th>
+                  <th style={thNarrowStyle}>Status</th>
+                  <th style={thNarrowStyle}>Aktionen</th>
                 </tr>
                 </thead>
 
                 <tbody>
                 {filteredBookings.map((booking) => (
                     <tr key={booking.id}>
-                      <td style={tdStyle}>{formatDate(booking.start_date)}</td>
-                      <td style={tdStyle}>{formatDate(booking.end_date)}</td>
+                      <td style={tdNarrowStyle}>{formatDate(booking.start_date)}</td>
+                      <td style={tdNarrowStyle}>{formatDate(booking.end_date)}</td>
 
-                      <td style={tdStyle}>
+                      <td style={tdNarrowStyle}>
                         <strong>Platz {getPlaceName(booking.place_id)}</strong>
                       </td>
 
-                      <td style={tdStyle}>{booking.guest_name}</td>
-
                       <td style={tdStyle}>
+                        <div>{booking.guest_name}</div>
+                        {booking.nationality && (
+                          <div style={guestMetaStyle}>🌍 {booking.nationality}</div>
+                        )}
+                      </td>
+
+                      <td style={tdNarrowStyle}>
                         {getStayLength(booking.start_date, booking.end_date)}
                       </td>
 
-                      <td style={tdStyle}>{booking.vehicle_size || "–"}</td>
+                      <td style={tdNarrowStyle}>{booking.vehicle_size || "–"}</td>
 
-                      <td style={tdStyle}>{booking.notes || "–"}</td>
+                      <td style={tdWideStyle}>
+                        {booking.notes
+                          ? booking.notes.length > 60
+                            ? booking.notes.slice(0, 58) + "…"
+                            : booking.notes
+                          : "–"}
+                      </td>
 
-                      <td style={tdStyle}>{booking.created_by || "Unbekannt"}</td>
+                      <td style={tdNarrowStyle}>{booking.created_by || "–"}</td>
 
-                      <td style={tdStyle}>{getStatusLabel(booking.status)}</td>
+                      <td style={tdNarrowStyle}>{getStatusLabel(booking.status)}</td>
 
-                      <td style={tdStyle}>
+                      <td style={tdNarrowStyle}>
                         <div style={actionRowStyle}>
                           <button
                               type="button"
                               onClick={() => openReceipt(booking.id)}
                               disabled={receiptLoadingId === booking.id}
                               style={receiptButtonStyle}
-                              title="Aufenthaltsnachweis oeffnen"
+                              title="Abrechnung öffnen"
                           >
-                            {receiptLoadingId === booking.id ? "Lade..." : "Nachweis"}
+                            {receiptLoadingId === booking.id ? "Lade..." : "Abrechnung"}
                           </button>
 
                           <button
@@ -542,7 +563,7 @@ async function handleSaveBooking() {
         </div>
 
         <div>
-          <label style={formLabelStyle}>Strasse und Hausnummer</label>
+          <label style={formLabelStyle}>Straße und Hausnummer</label>
           <input
             value={editGuestStreet}
             onChange={(e) => setEditGuestStreet(e.target.value)}
@@ -564,6 +585,16 @@ async function handleSaveBooking() {
           <input
             value={editGuestCity}
             onChange={(e) => setEditGuestCity(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Nationalität</label>
+          <input
+            value={editNationality}
+            onChange={(e) => setEditNationality(e.target.value)}
+            placeholder="z. B. Deutsch"
             style={formInputStyle}
           />
         </div>
@@ -658,19 +689,7 @@ async function handleSaveBooking() {
         </div>
 
         <div>
-          <label style={formLabelStyle}>Muell</label>
-          <label style={checkboxLabelStyle}>
-            <input
-              type="checkbox"
-              checked={editHasWaste}
-              onChange={(e) => setEditHasWaste(e.target.checked)}
-            />
-            Muellpauschale pro Tag
-          </label>
-        </div>
-
-        <div>
-          <label style={formLabelStyle}>Rheinblick</label>
+          <label style={formLabelStyle}>Erste Reihe mit Rheinblick</label>
           <label style={checkboxLabelStyle}>
             <input
               type="checkbox"
@@ -855,18 +874,46 @@ const tableStyle: React.CSSProperties = {
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",
-  padding: "0.75rem",
+  padding: "0.65rem 0.75rem",
   borderBottom: "1px solid #d7e4db",
   color: "#5f766b",
   fontWeight: 800,
   backgroundColor: "#f8fafc",
+  whiteSpace: "nowrap",
+};
+
+const thNarrowStyle: React.CSSProperties = {
+  ...thStyle,
+  width: "1%",
+};
+
+const thWideStyle: React.CSSProperties = {
+  ...thStyle,
+  width: "20%",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "0.75rem",
+  padding: "0.65rem 0.75rem",
   borderBottom: "1px solid #eef2f7",
   color: "#163126",
   verticalAlign: "top",
+};
+
+const tdNarrowStyle: React.CSSProperties = {
+  ...tdStyle,
+  whiteSpace: "nowrap",
+};
+
+const tdWideStyle: React.CSSProperties = {
+  ...tdStyle,
+  maxWidth: "200px",
+  overflow: "hidden",
+};
+
+const guestMetaStyle: React.CSSProperties = {
+  marginTop: "0.25rem",
+  color: "#5f766b",
+  fontSize: "0.83rem",
 };
 
 const searchWrapperStyle: React.CSSProperties = {

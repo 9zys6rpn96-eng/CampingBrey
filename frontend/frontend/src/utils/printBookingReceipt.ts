@@ -45,7 +45,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
       camper_length_m: null,
       dog_count: 0,
       has_electricity: false,
-      has_waste: false,
+      has_waste: true,
       has_rhine_view: false,
       vehicle_size: null,
       notes: null,
@@ -59,10 +59,10 @@ export function printBookingReceipt(receipt: BookingReceipt) {
       ["Auto", bookingInfo.car_count],
       ["Motorrad", bookingInfo.motorcycle_count],
       ["Wohnmobil/Wohnwagen", bookingInfo.camper_count],
-      ["Fahrzeuglaenge", bookingInfo.vehicle_size || (bookingInfo.camper_length_m ? `${bookingInfo.camper_length_m} m` : "-")],
+      ["Fahrzeuglänge", bookingInfo.vehicle_size || (bookingInfo.camper_length_m ? `${bookingInfo.camper_length_m} m` : "-")],
       ["Hunde", bookingInfo.dog_count],
       ["Strom", bookingInfo.has_electricity ? "Ja" : "Nein"],
-      ["Muell", bookingInfo.has_waste ? "Ja" : "Nein"],
+      ["Müll", "Ja"],
       ["Rheinblick", bookingInfo.has_rhine_view ? "Ja" : "Nein"],
       ["Erstellt von", bookingInfo.created_by || "-"],
     ];
@@ -123,7 +123,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
     </section>
 
     <section class="receipt-section">
-      <h1>AUFENTHALTS- UND ABRECHNUNGSNACHWEIS</h1>
+      <h1>AUFENTHALTS- UND ABRECHNUNGSBELEG</h1>
     </section>
 
     <section class="receipt-section grid">
@@ -132,6 +132,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
         <p>${escapeHtml(receipt.guest.name)}</p>
         <p>${escapeHtml(receipt.guest.street || "")}</p>
         <p>${escapeHtml([receipt.guest.postal_code, receipt.guest.city].filter(Boolean).join(" "))}</p>
+        ${receipt.guest.nationality ? `<p><strong>Nationalität:</strong> ${escapeHtml(receipt.guest.nationality)}</p>` : ""}
       </div>
       <div class="col">
         <h2>Buchung</h2>
@@ -139,7 +140,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
         <p><strong>Stellplatz:</strong> ${escapeHtml(receipt.place.name)}</p>
         <p><strong>Anreise:</strong> ${escapeHtml(formatDate(receipt.stay.start_date))}</p>
         <p><strong>Abreise:</strong> ${escapeHtml(formatDate(receipt.stay.end_date))}</p>
-        <p><strong>Naechte:</strong> ${escapeHtml(receipt.stay.nights)}</p>
+        <p><strong>Nächte:</strong> ${escapeHtml(receipt.stay.nights)}</p>
       </div>
     </section>
 
@@ -178,7 +179,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
 
     <section class="receipt-section">
       <p><strong>Zahlung:</strong> siehe gesonderter Kassenbeleg</p>
-      <p>Vielen Dank fuer Ihren Aufenthalt.</p>
+      <p>Vielen Dank für Ihren Aufenthalt.</p>
     </section>
   </main>
 </body>

@@ -301,7 +301,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
 
     const parsedPrice = Number(editPricePerNight.replace(",", "."));
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      setErrorMessage("Bitte einen gueltigen Preis pro Nacht eingeben.");
+      setErrorMessage("Bitte einen gültigen Preis pro Nacht eingeben.");
       return;
     }
 
