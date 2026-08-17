@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Booking, Place } from "../types";
-import { createBooking, updatePlace } from "../services/api";
+import type { Booking, BookingQuote, Place, Tariff } from "../types";
+import { createBooking, fetchTariffs, quoteBooking, updatePlace } from "../services/api";
+
+function formatEuro(value: number) {
+  return value.toLocaleString("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 interface NewBookingProps {
   place: Place;
@@ -117,9 +126,26 @@ export function NewBooking({
   const [vehicleSize, setVehicleSize] = useState("");
   const [tentCount, setTentCount] = useState("1");
   const [notes, setNotes] = useState("");
+  const [guestStreet, setGuestStreet] = useState("");
+  const [guestPostalCode, setGuestPostalCode] = useState("");
+  const [guestCity, setGuestCity] = useState("");
+  const [adultCount, setAdultCount] = useState("1");
+  const [childCount, setChildCount] = useState("0");
+  const [dayVisitorCount, setDayVisitorCount] = useState("0");
+  const [hasElectricity, setHasElectricity] = useState(false);
+  const [hasWaste, setHasWaste] = useState(false);
+  const [hasRhineView, setHasRhineView] = useState(false);
+  const [dogCount, setDogCount] = useState("0");
+  const [carCount, setCarCount] = useState("0");
+  const [motorcycleCount, setMotorcycleCount] = useState("0");
+  const [camperCount, setCamperCount] = useState("0");
+  const [tentTariffCode, setTentTariffCode] = useState("");
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [quote, setQuote] = useState<BookingQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   const isTentArea = place.type === "Zeltwiese";
   const isUnavailable =
@@ -133,6 +159,11 @@ const [editPlaceLength, setEditPlaceLength] = useState(
   place.length_m !== null && place.length_m !== undefined
     ? String(place.length_m)
     : ""
+);
+const [editPlacePricePerNight, setEditPlacePricePerNight] = useState(
+  place.price_per_night !== null && place.price_per_night !== undefined
+    ? String(place.price_per_night).replace(".", ",")
+    : "15,00"
 );
 const [placeEditError, setPlaceEditError] = useState<string | null>(null);
 const [placeEditSaving, setPlaceEditSaving] = useState(false);
@@ -148,6 +179,22 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
     setGuestName("");
     setTentCount("1");
     setNotes("");
+    setGuestStreet("");
+    setGuestPostalCode("");
+    setGuestCity("");
+    setAdultCount("1");
+    setChildCount("0");
+    setDayVisitorCount("0");
+    setHasElectricity(false);
+    setHasWaste(false);
+    setHasRhineView(false);
+    setDogCount("0");
+    setCarCount("0");
+    setMotorcycleCount("0");
+    setCamperCount("0");
+    setTentTariffCode("");
+    setQuote(null);
+    setQuoteError(null);
     setErrorMessage(null);
 
     setShowPlaceEdit(false);
@@ -159,6 +206,11 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         ? String(place.length_m)
         : ""
     );
+    setEditPlacePricePerNight(
+      place.price_per_night !== null && place.price_per_night !== undefined
+        ? String(place.price_per_night).replace(".", ",")
+        : "15,00"
+    );
     setPlaceEditError(null);
   }, [
     place.id,
@@ -166,6 +218,91 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
     initialStartDate,
     initialEndDate,
     initialVehicleLengthM,
+  ]);
+
+  useEffect(() => {
+    async function loadTariffs() {
+      try {
+        const items = await fetchTariffs(startDate || undefined);
+        setTariffs(items);
+      } catch {
+        // Tarife sind fuer Kernfunktion nicht blockierend.
+      }
+    }
+
+    loadTariffs();
+  }, [startDate]);
+
+  useEffect(() => {
+    async function refreshQuote() {
+      if (!startDate || !endDate || startDate >= endDate) {
+        setQuote(null);
+        setQuoteError(null);
+        return;
+      }
+
+      try {
+        setQuoteError(null);
+        const nextQuote = await quoteBooking({
+          place_id: place.id,
+          place_name: place.name,
+          place_type: place.type || undefined,
+          start_date: startDate,
+          end_date: endDate,
+          guest_name: guestName.trim() || "Gast",
+          guest_street: guestStreet.trim(),
+          guest_postal_code: guestPostalCode.trim(),
+          guest_city: guestCity.trim(),
+          people_count: (Number(adultCount) || 0) + (Number(childCount) || 0),
+          adult_count: Number(adultCount) || 0,
+          child_count: Number(childCount) || 0,
+          day_visitor_count: Number(dayVisitorCount) || 0,
+          has_electricity: hasElectricity,
+          has_waste: hasWaste,
+          has_rhine_view: hasRhineView,
+          dog_count: Number(dogCount) || 0,
+          car_count: Number(carCount) || 0,
+          motorcycle_count: Number(motorcycleCount) || 0,
+          camper_count: Number(camperCount) || 0,
+          camper_length_m: vehicleSize.trim() ? Number(vehicleSize.replace(",", ".")) : null,
+          tent_tariff_code: tentTariffCode || null,
+          vehicle_size: vehicleSize.trim(),
+          tent_count: isTentArea ? Number(tentCount) || 0 : 0,
+          notes: notes.trim(),
+        });
+        setQuote(nextQuote);
+      } catch (err: any) {
+        setQuote(null);
+        setQuoteError(err.message || "Preisvorschau nicht verfuegbar");
+      }
+    }
+
+    refreshQuote();
+  }, [
+    place.id,
+    place.name,
+    place.type,
+    startDate,
+    endDate,
+    guestName,
+    guestStreet,
+    guestPostalCode,
+    guestCity,
+    adultCount,
+    childCount,
+    dayVisitorCount,
+    hasElectricity,
+    hasWaste,
+    hasRhineView,
+    dogCount,
+    carCount,
+    motorcycleCount,
+    camperCount,
+    tentTariffCode,
+    vehicleSize,
+    tentCount,
+    notes,
+    isTentArea,
   ]);
 
   const maxOccupancyInSelectedRange = useMemo(
@@ -208,11 +345,18 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
       ? null
       : Number(editPlaceLength.replace(",", "."));
 
+  const parsedPrice = Number(editPlacePricePerNight.replace(",", "."));
+
   if (
     parsedLength !== null &&
     (!Number.isFinite(parsedLength) || parsedLength <= 0)
   ) {
     setPlaceEditError("Bitte eine gültige Platzlänge eingeben.");
+    return;
+  }
+
+  if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+    setPlaceEditError("Bitte einen gültigen Preis pro Nacht eingeben.");
     return;
   }
 
@@ -225,6 +369,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
       type: editPlaceType,
       capacity: editPlaceCapacity,
       length_m: parsedLength,
+      price_per_night: parsedPrice,
     });
 
     await onPlaceUpdated?.();
@@ -242,6 +387,48 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
     if (!guestName.trim()) {
       setErrorMessage("Bitte einen Gastnamen eingeben.");
       return;
+    }
+
+    const parsedDogCount = Number(dogCount);
+    if (!Number.isInteger(parsedDogCount) || parsedDogCount < 0) {
+      setErrorMessage("Bitte eine gueltige Anzahl Hunde eingeben.");
+      return;
+    }
+
+    const parsedAdultCount = Number(adultCount);
+    const parsedChildCount = Number(childCount);
+    const parsedDayVisitorCount = Number(dayVisitorCount);
+    const parsedCarCount = Number(carCount);
+    const parsedMotorcycleCount = Number(motorcycleCount);
+    const parsedCamperCount = Number(camperCount);
+
+    if (
+      !Number.isInteger(parsedAdultCount) || parsedAdultCount < 0 ||
+      !Number.isInteger(parsedChildCount) || parsedChildCount < 0 ||
+      !Number.isInteger(parsedDayVisitorCount) || parsedDayVisitorCount < 0 ||
+      !Number.isInteger(parsedCarCount) || parsedCarCount < 0 ||
+      !Number.isInteger(parsedMotorcycleCount) || parsedMotorcycleCount < 0 ||
+      !Number.isInteger(parsedCamperCount) || parsedCamperCount < 0
+    ) {
+      setErrorMessage("Bitte nur gueltige, nicht-negative Mengen eingeben.");
+      return;
+    }
+
+    const parsedVehicleLength =
+      vehicleSize.trim() === ""
+        ? null
+        : Number(vehicleSize.replace(",", "."));
+
+    if (parsedCamperCount > 0) {
+      if (parsedVehicleLength === null || !Number.isFinite(parsedVehicleLength) || parsedVehicleLength <= 0) {
+        setErrorMessage("Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen eingeben.");
+        return;
+      }
+
+      if (parsedVehicleLength > 8 && parsedVehicleLength <= 10) {
+        setErrorMessage("Tarif fuer Fahrzeuglaengen zwischen 8 m und 10 m ist nicht definiert.");
+        return;
+      }
     }
 
     if (!startDate || !endDate) {
@@ -269,6 +456,11 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         setErrorMessage(
           "Bitte eine gültige Anzahl an Zelten eingeben."
         );
+        return;
+      }
+
+      if (parsedTentCount > 0 && !tentTariffCode) {
+        setErrorMessage("Bitte einen Zelt-Tarif auswaehlen.");
         return;
       }
     } else if (vehicleSize.trim() !== "") {
@@ -316,6 +508,22 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         start_date: startDate,
         end_date: endDate,
         guest_name: guestName.trim(),
+        guest_street: guestStreet.trim(),
+        guest_postal_code: guestPostalCode.trim(),
+        guest_city: guestCity.trim(),
+        people_count: parsedAdultCount + parsedChildCount,
+        adult_count: parsedAdultCount,
+        child_count: parsedChildCount,
+        day_visitor_count: parsedDayVisitorCount,
+        has_electricity: hasElectricity,
+        has_waste: hasWaste,
+        has_rhine_view: hasRhineView,
+        dog_count: parsedDogCount,
+        car_count: parsedCarCount,
+        motorcycle_count: parsedMotorcycleCount,
+        camper_count: parsedCamperCount,
+        camper_length_m: parsedVehicleLength,
+        tent_tariff_code: tentTariffCode || null,
 
         vehicle_size: vehicleSize.trim()
           ? isTentArea
@@ -333,8 +541,22 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
       await onBookingCreated();
 
       setGuestName("");
+      setGuestStreet("");
+      setGuestPostalCode("");
+      setGuestCity("");
       setVehicleSize("");
       setTentCount("1");
+      setAdultCount("1");
+      setChildCount("0");
+      setDayVisitorCount("0");
+      setHasElectricity(false);
+      setHasWaste(false);
+      setHasRhineView(false);
+      setDogCount("0");
+      setCarCount("0");
+      setMotorcycleCount("0");
+      setCamperCount("0");
+      setTentTariffCode("");
       setNotes("");
 
       onBookingFinished?.();
@@ -434,6 +656,18 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
                       value={editPlaceLength}
                       onChange={(e) => setEditPlaceLength(e.target.value)}
                       placeholder="z. B. 8,5"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Preis pro Nacht (EUR)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editPlacePricePerNight}
+                      onChange={(e) => setEditPlacePricePerNight(e.target.value)}
+                      placeholder="z. B. 15,00"
                       style={inputStyle}
                     />
                   </div>
@@ -551,22 +785,41 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         </div>
 
         <div>
-          <label style={labelStyle}>
-            {isTentArea
-              ? "⛺ Zeltgröße"
-              : "🚐 Fahrzeuglänge in m"}
-          </label>
+          <label style={labelStyle}>Strasse und Hausnummer</label>
+          <input
+            value={guestStreet}
+            onChange={(e) => setGuestStreet(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>PLZ</label>
+          <input
+            value={guestPostalCode}
+            onChange={(e) => setGuestPostalCode(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Ort</label>
+          <input
+            value={guestCity}
+            onChange={(e) => setGuestCity(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>🚐 Fahrzeuglänge in m</label>
 
           <input
             type="text"
-            inputMode={isTentArea ? "text" : "decimal"}
+            inputMode="decimal"
             value={vehicleSize}
             onChange={(e) => setVehicleSize(e.target.value)}
-            placeholder={
-              isTentArea
-                ? "z. B. Familienzelt / 4 × 3 m"
-                : "z. B. 7,5"
-            }
+            placeholder="z. B. 7,5"
             style={inputStyle}
           />
         </div>
@@ -584,6 +837,139 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
             />
           </div>
         )}
+
+        {isTentArea && (
+          <div>
+            <label style={labelStyle}>Zelt-Tarif</label>
+            <select
+              value={tentTariffCode}
+              onChange={(e) => setTentTariffCode(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Bitte waehlen</option>
+              {tariffs
+                .filter((tariff) => tariff.code.startsWith("tent_"))
+                .map((tariff) => (
+                  <option key={tariff.code} value={tariff.code}>
+                    {tariff.label} ({formatEuro(tariff.price)})
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label style={labelStyle}>Erwachsene</label>
+          <input
+            type="number"
+            min="0"
+            value={adultCount}
+            onChange={(e) => setAdultCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Kinder bis 14 Jahre</label>
+          <input
+            type="number"
+            min="0"
+            value={childCount}
+            onChange={(e) => setChildCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Tagesbesucher</label>
+          <input
+            type="number"
+            min="0"
+            value={dayVisitorCount}
+            onChange={(e) => setDayVisitorCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Auto</label>
+          <input
+            type="number"
+            min="0"
+            value={carCount}
+            onChange={(e) => setCarCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Motorrad</label>
+          <input
+            type="number"
+            min="0"
+            value={motorcycleCount}
+            onChange={(e) => setMotorcycleCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Wohnmobil/Wohnwagen</label>
+          <input
+            type="number"
+            min="0"
+            value={camperCount}
+            onChange={(e) => setCamperCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Anzahl Hunde</label>
+          <input
+            type="number"
+            min="0"
+            value={dogCount}
+            onChange={(e) => setDogCount(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Strom</label>
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={hasElectricity}
+              onChange={(e) => setHasElectricity(e.target.checked)}
+            />
+            Strompauschale pro Nacht berechnen
+          </label>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Muell</label>
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={hasWaste}
+              onChange={(e) => setHasWaste(e.target.checked)}
+            />
+            Muellpauschale pro Tag
+          </label>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Erste Reihe mit Rheinblick</label>
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={hasRhineView}
+              onChange={(e) => setHasRhineView(e.target.checked)}
+            />
+            Einmalige Zusatzleistung
+          </label>
+        </div>
 
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={labelStyle}>Weitere Informationen</label>
@@ -623,6 +1009,33 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         <div style={blockedBoxStyle}>
           Dieser Platz ist als {place.type} markiert und kann nicht
           gebucht werden.
+        </div>
+      )}
+
+      {(quote || quoteError) && (
+        <div style={pricePreviewBoxStyle}>
+          <div style={pricePreviewTitleStyle}>Preisuebersicht</div>
+          {quoteError && <div style={errorTextStyle}>{quoteError}</div>}
+
+          {quote && (
+            <>
+              <div style={pricePreviewTotalStyle}>Gesamt: {formatEuro(quote.total)}</div>
+              <div style={pricePreviewMetaStyle}>
+                {quote.nights} {quote.nights === 1 ? "Nacht" : "Naechte"} / {quote.days} {quote.days === 1 ? "Tag" : "Tage"}
+              </div>
+
+              <div style={priceItemListStyle}>
+                {quote.items.map((item) => (
+                  <div key={`${item.description}-${item.quantity}`} style={priceItemRowStyle}>
+                    <span>{item.description}</span>
+                    <span>
+                      {item.quantity} x {formatEuro(item.unit_price)} = {formatEuro(item.total)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -758,6 +1171,14 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
+const checkboxLabelStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "0.45rem",
+  color: "#355447",
+  fontSize: "0.9rem",
+};
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.72rem 0.82rem",
@@ -796,6 +1217,50 @@ const errorBoxStyle: React.CSSProperties = {
   backgroundColor: "#fee2e2",
   borderColor: "#fecaca",
   color: "#991b1b",
+};
+
+const errorTextStyle: React.CSSProperties = {
+  color: "#991b1b",
+  fontSize: "0.9rem",
+};
+
+const pricePreviewBoxStyle: React.CSSProperties = {
+  marginTop: "1rem",
+  padding: "0.9rem",
+  borderRadius: "0.8rem",
+  border: "1px solid #d7e4db",
+  backgroundColor: "#f8fafc",
+};
+
+const pricePreviewTitleStyle: React.CSSProperties = {
+  fontWeight: 800,
+  color: "#163126",
+  marginBottom: "0.45rem",
+};
+
+const pricePreviewTotalStyle: React.CSSProperties = {
+  fontSize: "1rem",
+  fontWeight: 800,
+  color: "#166534",
+};
+
+const pricePreviewMetaStyle: React.CSSProperties = {
+  color: "#5f766b",
+  fontSize: "0.88rem",
+  marginBottom: "0.45rem",
+};
+
+const priceItemListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "0.25rem",
+};
+
+const priceItemRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "0.75rem",
+  fontSize: "0.88rem",
+  color: "#355447",
 };
 
 const buttonRowStyle: React.CSSProperties = {

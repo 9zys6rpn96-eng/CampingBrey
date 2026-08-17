@@ -26,6 +26,15 @@ function formatDate(dateString: string) {
   });
 }
 
+function formatEuro(value: number) {
+  return value.toLocaleString("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function getMaxOccupancyInRange(
   bookings: Booking[],
   startDate: string,
@@ -122,6 +131,7 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const [vehicleLengthM, setVehicleLengthM] = useState("");
   const [notes, setNotes] = useState("");
   const [editLengthM, setEditLengthM] = useState("");
+  const [editPricePerNight, setEditPricePerNight] = useState("");
   const [tentCount, setTentCount] = useState("1");
 
   useEffect(() => {
@@ -136,6 +146,11 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
         ? String(place.length_m)
         : ""
     );
+      setEditPricePerNight(
+        place.price_per_night !== null && place.price_per_night !== undefined
+          ? String(place.price_per_night).replace(".", ",")
+          : "15,00"
+      );
 
       if (PLACE_TYPE_OPTIONS.includes(currentType as (typeof PLACE_TYPE_OPTIONS)[number])) {
         setSelectedTypeOption(currentType);
@@ -284,10 +299,17 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   try {
     setErrorMessage(null);
 
+    const parsedPrice = Number(editPricePerNight.replace(",", "."));
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      setErrorMessage("Bitte einen gueltigen Preis pro Nacht eingeben.");
+      return;
+    }
+
     await updatePlace(currentPlace.id, {
       name: editName,
       type: editType,
       capacity: editCapacity,
+      price_per_night: parsedPrice,
       length_m:
         editLengthM.trim() === ""
           ? null
@@ -358,6 +380,10 @@ const isTentAreaFull =
 
                       <span style={metaBadgeStyle}>
         📏 {currentPlace.length_m ? `${currentPlace.length_m} m` : "nicht gesetzt"}
+      </span>
+
+                      <span style={metaBadgeStyle}>
+        💶 {formatEuro(currentPlace.price_per_night ?? 15)}
       </span>
                   </div>
               </div>
@@ -765,6 +791,17 @@ const isTentAreaFull =
                               style={inputStyle}
                           />
                       </div>
+                      <div>
+                          <label style={labelStyle}>Preis pro Nacht (EUR)</label>
+                          <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editPricePerNight}
+                              onChange={(e) => setEditPricePerNight(e.target.value)}
+                              placeholder="z.B. 15,00"
+                              style={inputStyle}
+                          />
+                      </div>
                       <div style={buttonFieldStyle}>
                           <button onClick={handleSavePlace} style={primaryButtonStyle}>
                               Änderungen speichern
@@ -1145,3 +1182,4 @@ const quickActionButtonStyle: React.CSSProperties = {
     fontSize: "0.82rem",
     fontWeight: 700,
 };
+

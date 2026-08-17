@@ -1,15 +1,221 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from decimal import Decimal, ROUND_HALF_UP
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date, timedelta
 from .database import Base, engine, SessionLocal
 from . import models, schemas
+from .billing import ensure_default_tariffs, get_active_tariffs, build_quote
 from .auth import verify_password, get_password_hash, create_access_token, decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 app = FastAPI()
+
+DEFAULT_PLACE_PRICE_PER_NIGHT = Decimal("15.00")
+
+
+def quantize_money(value: Decimal) -> Decimal:
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def parse_vehicle_size_length(vehicle_size: str | None) -> float | None:
+    if vehicle_size is None or vehicle_size.strip() == "":
+        return None
+
+    normalized = vehicle_size.lower().replace("m", "").replace(",", ".").strip()
+    try:
+        value = float(normalized)
+    except ValueError:
+        return None
+
+    return value if value > 0 else None
+
+
+def derive_people_count(adult_count: int, child_count: int) -> int:
+    return max(0, adult_count) + max(0, child_count)
+
+
+def run_schema_migrations():
+    inspector = inspect(engine)
+
+    with engine.begin() as connection:
+        if inspector.has_table("places"):
+            place_columns = {column["name"] for column in inspector.get_columns("places")}
+
+            if "price_per_night" not in place_columns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE places ADD COLUMN price_per_night NUMERIC(10,2) NOT NULL DEFAULT 15.00"
+                    )
+                )
+
+        if inspector.has_table("bookings"):
+            booking_columns = {column["name"] for column in inspector.get_columns("bookings")}
+
+            if "booking_number" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN booking_number VARCHAR"))
+
+            if "guest_street" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN guest_street VARCHAR"))
+
+            if "guest_postal_code" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN guest_postal_code VARCHAR"))
+
+            if "guest_city" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN guest_city VARCHAR"))
+
+            if "people_count" not in booking_columns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE bookings ADD COLUMN people_count INTEGER NOT NULL DEFAULT 1"
+                    )
+                )
+
+            if "has_electricity" not in booking_columns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE bookings ADD COLUMN has_electricity BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                )
+
+            if "dog_count" not in booking_columns:
+                connection.execute(
+                    text("ALTER TABLE bookings ADD COLUMN dog_count INTEGER NOT NULL DEFAULT 0")
+                )
+
+            if "place_price_per_night" not in booking_columns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE bookings ADD COLUMN place_price_per_night NUMERIC(10,2) NOT NULL DEFAULT 15.00"
+                    )
+                )
+
+            if "adult_count" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN adult_count INTEGER NOT NULL DEFAULT 1"))
+
+            if "child_count" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN child_count INTEGER NOT NULL DEFAULT 0"))
+
+            if "day_visitor_count" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN day_visitor_count INTEGER NOT NULL DEFAULT 0"))
+
+            if "has_waste" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN has_waste BOOLEAN NOT NULL DEFAULT FALSE"))
+
+            if "has_rhine_view" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN has_rhine_view BOOLEAN NOT NULL DEFAULT FALSE"))
+
+            if "car_count" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN car_count INTEGER NOT NULL DEFAULT 0"))
+
+            if "motorcycle_count" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN motorcycle_count INTEGER NOT NULL DEFAULT 0"))
+
+            if "camper_count" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN camper_count INTEGER NOT NULL DEFAULT 0"))
+
+            if "camper_length_m" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN camper_length_m FLOAT"))
+
+            if "tent_tariff_code" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN tent_tariff_code VARCHAR"))
+
+            if "pricing_snapshot" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN pricing_snapshot JSON"))
+
+            if "billing_total" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN billing_total NUMERIC(10,2)"))
+
+            connection.execute(
+                text(
+                    """
+                    UPDATE bookings b
+                    SET place_price_per_night = COALESCE(p.price_per_night, 15.00)
+                    FROM places p
+                    WHERE b.place_id = p.id
+                      AND (b.place_price_per_night IS NULL OR b.place_price_per_night < 0)
+                    """
+                )
+            )
+
+            connection.execute(
+                text(
+                    """
+                    WITH numbered AS (
+                        SELECT
+                            id,
+                            COALESCE(EXTRACT(YEAR FROM start_date)::int, EXTRACT(YEAR FROM CURRENT_DATE)::int) AS y,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY COALESCE(EXTRACT(YEAR FROM start_date)::int, EXTRACT(YEAR FROM CURRENT_DATE)::int)
+                                ORDER BY id
+                            ) AS seq
+                        FROM bookings
+                    )
+                    UPDATE bookings b
+                    SET booking_number = CONCAT(numbered.y::text, '-', LPAD(numbered.seq::text, 5, '0'))
+                    FROM numbered
+                    WHERE b.id = numbered.id
+                      AND (b.booking_number IS NULL OR b.booking_number = '')
+                    """
+                )
+            )
+
+            connection.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_bookings_booking_number ON bookings (booking_number)"
+                )
+            )
+
+        if inspector.has_table("tariffs") is False:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE tariffs (
+                        id SERIAL PRIMARY KEY,
+                        code VARCHAR NOT NULL UNIQUE,
+                        label VARCHAR NOT NULL,
+                        unit VARCHAR NOT NULL,
+                        price NUMERIC(10,2) NOT NULL,
+                        valid_from DATE NOT NULL,
+                        valid_to DATE
+                    )
+                    """
+                )
+            )
+
+
+def generate_booking_number(db: Session, year: int) -> str:
+    prefix = f"{year}-"
+    latest = (
+        db.query(models.Booking)
+        .filter(models.Booking.booking_number.like(f"{prefix}%"))
+        .order_by(models.Booking.booking_number.desc())
+        .first()
+    )
+
+    if latest and latest.booking_number:
+        try:
+            last_sequence = int(latest.booking_number.split("-")[1])
+        except (IndexError, ValueError):
+            last_sequence = 0
+    else:
+        last_sequence = 0
+
+    return f"{year}-{str(last_sequence + 1).zfill(5)}"
+
+
+def quote_from_booking_payload(
+    booking_data: schemas.BookingCreate | schemas.BookingUpdate | schemas.BookingQuoteRequest,
+    place: models.Place,
+    db: Session,
+):
+    tariffs = get_active_tariffs(db, booking_data.start_date)
+    if not tariffs:
+        raise HTTPException(status_code=500, detail="Keine aktiven Tarife konfiguriert")
+    return build_quote(booking_data, place, tariffs)
 
 origins = [
     "http://localhost",
@@ -33,6 +239,7 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+run_schema_migrations()
 
 
 def ensure_default_users():
@@ -86,6 +293,12 @@ def ensure_default_places():
 
 ensure_default_users()
 ensure_default_places()
+
+db_for_tariffs = SessionLocal()
+try:
+    ensure_default_tariffs(db_for_tariffs)
+finally:
+    db_for_tariffs.close()
 
 
 def get_db():
@@ -149,6 +362,8 @@ def calculate_place_status_for_range(
             "name": place.name,
             "type": place.type,
             "capacity": place.capacity,
+            "length_m": place.length_m,
+            "price_per_night": place.price_per_night,
             "start_date": start_date,
             "end_date": end_date,
             "max_occupancy": 0,
@@ -163,6 +378,8 @@ def calculate_place_status_for_range(
             "name": place.name,
             "type": place.type,
             "capacity": place.capacity,
+            "length_m": place.length_m,
+            "price_per_night": place.price_per_night,
             "start_date": start_date,
             "end_date": end_date,
             "max_occupancy": 0,
@@ -208,6 +425,8 @@ def calculate_place_status_for_range(
         "name": place.name,
         "type": place.type,
         "capacity": place.capacity,
+        "length_m": place.length_m,
+        "price_per_night": place.price_per_night,
         "start_date": start_date,
         "end_date": end_date,
         "max_occupancy": max_occupancy,
@@ -248,6 +467,36 @@ def would_exceed_capacity(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/tariffs", response_model=list[schemas.TariffRead])
+def list_tariffs(
+    on_date: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_authenticated_user),
+):
+    ref_date = on_date or date.today()
+    tariffs = get_active_tariffs(db, ref_date)
+    return list(tariffs.values())
+
+
+@app.post("/bookings/quote", response_model=schemas.BookingQuoteResponse)
+def quote_booking(
+    payload: schemas.BookingQuoteRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_authenticated_user),
+):
+    place = db.query(models.Place).filter(models.Place.id == payload.place_id).first()
+    if place is None:
+        raise HTTPException(status_code=404, detail="Platz nicht gefunden")
+
+    quote = quote_from_booking_payload(payload, place, db)
+    return {
+        "nights": quote["nights"],
+        "days": quote["days"],
+        "items": quote["items"],
+        "total": quote["total"],
+    }
 
 
 @app.post("/login")
@@ -376,6 +625,9 @@ def update_booking(
             detail="Dieser Platz kann nicht gebucht werden"
         )
 
+    if place.type == "Zeltwiese" and (booking.tent_count is None or booking.tent_count < 1):
+        raise HTTPException(status_code=400, detail="Bitte die Anzahl der Zelte angeben")
+
     # Bei Stellplätzen Fahrzeuglänge prüfen
     if (
         place.type != "Zeltwiese"
@@ -418,23 +670,41 @@ def update_booking(
     )
 
     requested_units = (
-        booking.tent_count or 1
+        updated.tent_count or 1
         if place.type == "Zeltwiese"
         else 1
     )
 
     if place.type == "Zeltwiese":
-        if booking.tent_count is None or booking.tent_count < 1:
+        if updated.tent_count is None or updated.tent_count < 1:
             raise HTTPException(
                 status_code=400,
                 detail="Bitte die Anzahl der Zelte angeben"
             )
+
+    if updated.place_price_per_night is not None and updated.place_price_per_night < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Der Stellplatzpreis darf nicht negativ sein"
+        )
+
+    derived_people_count = derive_people_count(updated.adult_count, updated.child_count)
+    derived_camper_length = updated.camper_length_m or parse_vehicle_size_length(updated.vehicle_size)
+
+    if updated.camper_count > 0 and (derived_camper_length is None or derived_camper_length <= 0):
+        raise HTTPException(status_code=400, detail="Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen angeben")
+
+    updated.people_count = derived_people_count
+    updated.camper_length_m = derived_camper_length
+
+    quote = quote_from_booking_payload(updated, place, db)
 
     if would_exceed_capacity(
         place=place,
         existing_bookings=overlapping_bookings,
         start_date=updated.start_date,
         end_date=updated.end_date,
+        requested_units=requested_units,
     ):
         raise HTTPException(
             status_code=400,
@@ -445,6 +715,29 @@ def update_booking(
     booking.start_date = updated.start_date
     booking.end_date = updated.end_date
     booking.guest_name = updated.guest_name.strip()
+    booking.guest_street = updated.guest_street
+    booking.guest_postal_code = updated.guest_postal_code
+    booking.guest_city = updated.guest_city
+    booking.people_count = derive_people_count(updated.adult_count, updated.child_count)
+    booking.adult_count = updated.adult_count
+    booking.child_count = updated.child_count
+    booking.day_visitor_count = updated.day_visitor_count
+    booking.has_electricity = updated.has_electricity
+    booking.has_waste = updated.has_waste
+    booking.has_rhine_view = updated.has_rhine_view
+    booking.dog_count = updated.dog_count
+    booking.car_count = updated.car_count
+    booking.motorcycle_count = updated.motorcycle_count
+    booking.camper_count = updated.camper_count
+    booking.camper_length_m = derived_camper_length
+    booking.tent_tariff_code = updated.tent_tariff_code
+    booking.place_price_per_night = (
+        updated.place_price_per_night
+        if updated.place_price_per_night is not None
+        else booking.place_price_per_night
+    )
+    booking.pricing_snapshot = quote["snapshot"]
+    booking.billing_total = quote["total"]
     booking.vehicle_size = updated.vehicle_size
     booking.notes = updated.notes
     booking.tent_count = updated.tent_count
@@ -471,7 +764,9 @@ def create_place(
     db_place = models.Place(
         name=place.name,
         type=place.type,
-        capacity=place.capacity
+        capacity=place.capacity,
+        length_m=place.length_m,
+        price_per_night=place.price_per_night,
     )
     db.add(db_place)
     db.commit()
@@ -491,7 +786,9 @@ def create_places_bulk(
         db_place = models.Place(
             name=place.name,
             type=place.type,
-            capacity=place.capacity
+            capacity=place.capacity,
+            length_m=place.length_m,
+            price_per_night=place.price_per_night,
         )
         db.add(db_place)
         db_places.append(db_place)
@@ -642,6 +939,9 @@ def update_place(
     place.type = updated.type
     place.capacity = updated.capacity
     place.length_m = updated.length_m
+    if updated.price_per_night < 0:
+        raise HTTPException(status_code=400, detail="Preis darf nicht negativ sein")
+    place.price_per_night = updated.price_per_night
 
     db.commit()
     db.refresh(place)
@@ -664,6 +964,21 @@ def create_booking(
             status_code=400,
             detail="Start date must be before end date"
         )
+
+    if not booking.guest_name.strip():
+        raise HTTPException(status_code=400, detail="Bitte einen Gastnamen eingeben")
+
+    if booking.place_price_per_night is not None and booking.place_price_per_night < 0:
+        raise HTTPException(status_code=400, detail="Der Stellplatzpreis darf nicht negativ sein")
+
+    derived_people_count = derive_people_count(booking.adult_count, booking.child_count)
+    derived_camper_length = booking.camper_length_m or parse_vehicle_size_length(booking.vehicle_size)
+
+    if booking.camper_count > 0 and (derived_camper_length is None or derived_camper_length <= 0):
+        raise HTTPException(status_code=400, detail="Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen angeben")
+
+    booking.people_count = derived_people_count
+    booking.camper_length_m = derived_camper_length
 
     if place.type in ["Dauercamper", "Gesperrt"]:
         raise HTTPException(
@@ -702,11 +1017,20 @@ def create_booking(
         .all()
     )
 
+    requested_units = (
+        booking.tent_count or 1
+        if place.type == "Zeltwiese"
+        else 1
+    )
+
+    quote = quote_from_booking_payload(booking, place, db)
+
     if would_exceed_capacity(
         place=place,
         existing_bookings=overlapping_bookings,
         start_date=booking.start_date,
         end_date=booking.end_date,
+        requested_units=requested_units,
     ):
         raise HTTPException(
             status_code=400,
@@ -715,9 +1039,33 @@ def create_booking(
 
     db_booking = models.Booking(
         place_id=booking.place_id,
+        booking_number=generate_booking_number(db, booking.start_date.year),
         start_date=booking.start_date,
         end_date=booking.end_date,
-        guest_name=booking.guest_name,
+        guest_name=booking.guest_name.strip(),
+        guest_street=booking.guest_street,
+        guest_postal_code=booking.guest_postal_code,
+        guest_city=booking.guest_city,
+        people_count=derived_people_count,
+        adult_count=booking.adult_count,
+        child_count=booking.child_count,
+        day_visitor_count=booking.day_visitor_count,
+        has_electricity=booking.has_electricity,
+        has_waste=booking.has_waste,
+        has_rhine_view=booking.has_rhine_view,
+        dog_count=booking.dog_count,
+        car_count=booking.car_count,
+        motorcycle_count=booking.motorcycle_count,
+        camper_count=booking.camper_count,
+        camper_length_m=derived_camper_length,
+        tent_tariff_code=booking.tent_tariff_code,
+        place_price_per_night=(
+            booking.place_price_per_night
+            if booking.place_price_per_night is not None
+            else place.price_per_night
+        ),
+        pricing_snapshot=quote["snapshot"],
+        billing_total=quote["total"],
         vehicle_size=booking.vehicle_size,
         tent_count=booking.tent_count,
         notes=booking.notes,
@@ -736,6 +1084,107 @@ def list_bookings(
 ):
     bookings = db.query(models.Booking).all()
     return bookings
+
+
+@app.get("/bookings/{booking_id}/receipt", response_model=schemas.BookingReceiptRead)
+def get_booking_receipt(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_authenticated_user),
+):
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if booking is None:
+        raise HTTPException(status_code=404, detail="Buchung nicht gefunden")
+
+    place = db.query(models.Place).filter(models.Place.id == booking.place_id).first()
+    if place is None:
+        raise HTTPException(status_code=404, detail="Platz nicht gefunden")
+
+    if not booking.booking_number:
+        booking.booking_number = generate_booking_number(db, booking.start_date.year)
+        db.commit()
+        db.refresh(booking)
+
+    if not booking.pricing_snapshot:
+        payload = schemas.BookingQuoteRequest(
+            place_id=booking.place_id,
+            start_date=booking.start_date,
+            end_date=booking.end_date,
+            guest_name=booking.guest_name,
+            guest_street=booking.guest_street,
+            guest_postal_code=booking.guest_postal_code,
+            guest_city=booking.guest_city,
+            people_count=booking.people_count,
+            adult_count=booking.adult_count,
+            child_count=booking.child_count,
+            day_visitor_count=booking.day_visitor_count,
+            has_electricity=booking.has_electricity,
+            has_waste=booking.has_waste,
+            has_rhine_view=booking.has_rhine_view,
+            dog_count=booking.dog_count,
+            car_count=booking.car_count,
+            motorcycle_count=booking.motorcycle_count,
+            camper_count=booking.camper_count,
+            camper_length_m=booking.camper_length_m,
+            tent_tariff_code=booking.tent_tariff_code,
+            place_price_per_night=booking.place_price_per_night,
+            vehicle_size=booking.vehicle_size,
+            tent_count=booking.tent_count,
+            notes=booking.notes,
+        )
+        quote = quote_from_booking_payload(payload, place, db)
+        booking.pricing_snapshot = quote["snapshot"]
+        booking.billing_total = quote["total"]
+        db.commit()
+        db.refresh(booking)
+
+    snapshot = booking.pricing_snapshot or {}
+    snapshot_items = snapshot.get("items") or []
+    applied_codes = sorted({item.get("tariff_code") for item in snapshot_items if item.get("tariff_code")})
+
+    nights = (booking.end_date - booking.start_date).days
+
+    return {
+        "booking_id": booking.id,
+        "booking_number": booking.booking_number,
+        "guest": {
+            "name": booking.guest_name,
+            "street": booking.guest_street,
+            "postal_code": booking.guest_postal_code,
+            "city": booking.guest_city,
+        },
+        "stay": {
+            "start_date": booking.start_date,
+            "end_date": booking.end_date,
+            "nights": nights,
+        },
+        "place": {
+            "id": place.id,
+            "name": place.name,
+            "type": place.type,
+        },
+        "booking_info": {
+            "adult_count": booking.adult_count,
+            "child_count": booking.child_count,
+            "day_visitor_count": booking.day_visitor_count,
+            "car_count": booking.car_count,
+            "motorcycle_count": booking.motorcycle_count,
+            "camper_count": booking.camper_count,
+            "camper_length_m": booking.camper_length_m,
+            "dog_count": booking.dog_count,
+            "has_electricity": booking.has_electricity,
+            "has_waste": booking.has_waste,
+            "has_rhine_view": booking.has_rhine_view,
+            "vehicle_size": booking.vehicle_size,
+            "notes": booking.notes,
+            "created_by": booking.created_by,
+        },
+        "prices": {
+            "applied_tariff_codes": applied_codes,
+        },
+        "items": snapshot_items,
+        "total": booking.billing_total or Decimal(str(snapshot.get("total") or "0.00")),
+    }
 
 
 @app.delete("/bookings/{booking_id}")

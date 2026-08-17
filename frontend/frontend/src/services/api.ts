@@ -1,4 +1,4 @@
-import type { Place, Booking, PlaceStatus, User, LoginResponse, CurrentUser } from "../types";
+import type { Place, Booking, PlaceStatus, User, LoginResponse, CurrentUser, BookingReceipt, BookingQuote, Tariff } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -114,6 +114,23 @@ export async function createBooking(data: {
   start_date: string;
   end_date: string;
   guest_name: string;
+  guest_street?: string;
+  guest_postal_code?: string;
+  guest_city?: string;
+  people_count?: number;
+  adult_count?: number;
+  child_count?: number;
+  day_visitor_count?: number;
+  has_electricity?: boolean;
+  has_waste?: boolean;
+  has_rhine_view?: boolean;
+  dog_count?: number;
+  car_count?: number;
+  motorcycle_count?: number;
+  camper_count?: number;
+  camper_length_m?: number | null;
+  tent_tariff_code?: string | null;
+  place_price_per_night?: number | null;
   vehicle_size: string;
   tent_count?: number | null;
   notes: string;
@@ -164,6 +181,7 @@ export async function updatePlace(
   type: string;
   capacity: number;
   length_m?: number | null;
+  price_per_night: number;
 }
 ) {
   const token = getAuthToken();
@@ -240,6 +258,23 @@ export async function updateBooking(
     start_date: string;
     end_date: string;
     guest_name: string;
+    guest_street?: string;
+    guest_postal_code?: string;
+    guest_city?: string;
+    people_count?: number;
+    adult_count?: number;
+    child_count?: number;
+    day_visitor_count?: number;
+    has_electricity?: boolean;
+    has_waste?: boolean;
+    has_rhine_view?: boolean;
+    dog_count?: number;
+    car_count?: number;
+    motorcycle_count?: number;
+    camper_count?: number;
+    camper_length_m?: number | null;
+    tent_tariff_code?: string | null;
+    place_price_per_night?: number | null;
     vehicle_size: string;
     tent_count?: number | null;
     notes: string;
@@ -266,3 +301,61 @@ export async function updateBooking(
 
   return res.json();
 }
+
+export async function fetchBookingReceipt(bookingId: number): Promise<BookingReceipt> {
+  return apiGet<BookingReceipt>(`/bookings/${bookingId}/receipt`);
+}
+
+export async function fetchTariffs(onDate?: string): Promise<Tariff[]> {
+  if (!onDate) {
+    return apiGet<Tariff[]>("/tariffs");
+  }
+  return apiGet<Tariff[]>(`/tariffs?on_date=${encodeURIComponent(onDate)}`);
+}
+
+export async function quoteBooking(data: {
+  place_id: number;
+  place_name?: string;
+  place_type?: string;
+  start_date: string;
+  end_date: string;
+  guest_name: string;
+  guest_street?: string;
+  guest_postal_code?: string;
+  guest_city?: string;
+  people_count?: number;
+  adult_count?: number;
+  child_count?: number;
+  day_visitor_count?: number;
+  has_electricity?: boolean;
+  has_waste?: boolean;
+  has_rhine_view?: boolean;
+  dog_count?: number;
+  car_count?: number;
+  motorcycle_count?: number;
+  camper_count?: number;
+  camper_length_m?: number | null;
+  tent_tariff_code?: string | null;
+  place_price_per_night?: number | null;
+  vehicle_size?: string;
+  tent_count?: number | null;
+  notes?: string;
+}): Promise<BookingQuote> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/bookings/quote`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Preisberechnung fehlgeschlagen");
+  }
+
+  return res.json();
+}
+

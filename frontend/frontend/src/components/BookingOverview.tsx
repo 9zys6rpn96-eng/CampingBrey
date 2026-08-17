@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import type { Booking, Place } from "../types";
-import { updateBooking } from "../services/api";
+import type { Booking, Place, BookingReceipt } from "../types";
+import { fetchBookingReceipt, updateBooking } from "../services/api";
+import { BookingReceiptModal } from "./BookingReceiptModal";
 import { useViewport } from "../hooks/useViewport";
 
 interface BookingOverviewProps {
@@ -53,9 +54,27 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   const [editVehicleSize, setEditVehicleSize] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editTentCount, setEditTentCount] = useState("1");
+  const [editGuestStreet, setEditGuestStreet] = useState("");
+  const [editGuestPostalCode, setEditGuestPostalCode] = useState("");
+  const [editGuestCity, setEditGuestCity] = useState("");
+  const [editHasElectricity, setEditHasElectricity] = useState(false);
+  const [editHasWaste, setEditHasWaste] = useState(false);
+  const [editHasRhineView, setEditHasRhineView] = useState(false);
+  const [editDogCount, setEditDogCount] = useState("0");
+  const [editAdultCount, setEditAdultCount] = useState("1");
+  const [editChildCount, setEditChildCount] = useState("0");
+  const [editDayVisitorCount, setEditDayVisitorCount] = useState("0");
+  const [editCarCount, setEditCarCount] = useState("0");
+  const [editMotorcycleCount, setEditMotorcycleCount] = useState("0");
+  const [editCamperCount, setEditCamperCount] = useState("0");
+  const [editTentTariffCode, setEditTentTariffCode] = useState("");
+  const [editPlacePricePerNight, setEditPlacePricePerNight] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [hidePast, setHidePast] = useState(false);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<number | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [activeReceipt, setActiveReceipt] = useState<BookingReceipt | null>(null);
   const { isMobile, isTablet } = useViewport();
   const sortedBookings = useMemo(
   () =>
@@ -110,6 +129,27 @@ export function BookingOverview({ bookings, places,onBookingUpdated }: BookingOv
   setEditVehicleSize(booking.vehicle_size || "");
   setEditNotes(booking.notes || "");
   setEditTentCount(String(booking.tent_count ?? 1));
+      setEditGuestStreet(booking.guest_street || "");
+      setEditGuestPostalCode(booking.guest_postal_code || "");
+      setEditGuestCity(booking.guest_city || "");
+      setEditHasElectricity(Boolean(booking.has_electricity));
+          setEditHasWaste(Boolean(booking.has_waste));
+          setEditHasRhineView(Boolean(booking.has_rhine_view));
+      setEditDogCount(String(booking.dog_count ?? 0));
+          setEditAdultCount(String(booking.adult_count ?? booking.people_count ?? 1));
+          setEditChildCount(String(booking.child_count ?? 0));
+          setEditDayVisitorCount(String(booking.day_visitor_count ?? 0));
+          setEditCarCount(String(booking.car_count ?? 0));
+          setEditMotorcycleCount(String(booking.motorcycle_count ?? 0));
+          setEditCamperCount(String(booking.camper_count ?? 0));
+          setEditTentTariffCode(booking.tent_tariff_code ?? "");
+      setEditPlacePricePerNight(
+        String(
+          booking.place_price_per_night ??
+          places.find((p) => p.id === booking.place_id)?.price_per_night ??
+          15
+        ).replace(".", ",")
+      );
   setEditError(null);
 }
 
@@ -121,6 +161,21 @@ function closeEditDialog() {
   setEditEndDate("");
   setEditVehicleSize("");
   setEditNotes("");
+  setEditGuestStreet("");
+  setEditGuestPostalCode("");
+  setEditGuestCity("");
+  setEditHasElectricity(false);
+  setEditHasWaste(false);
+  setEditHasRhineView(false);
+  setEditDogCount("0");
+  setEditAdultCount("1");
+  setEditChildCount("0");
+  setEditDayVisitorCount("0");
+  setEditCarCount("0");
+  setEditMotorcycleCount("0");
+  setEditCamperCount("0");
+  setEditTentTariffCode("");
+  setEditPlacePricePerNight("");
   setEditError(null);
 }
 
@@ -144,6 +199,50 @@ async function handleSaveBooking() {
     return;
   }
 
+  const parsedDogCount = Number(editDogCount);
+  if (!Number.isInteger(parsedDogCount) || parsedDogCount < 0) {
+    setEditError("Die Anzahl Hunde darf nicht negativ sein.");
+    return;
+  }
+
+  const parsedAdultCount = Number(editAdultCount);
+  const parsedChildCount = Number(editChildCount);
+  const parsedDayVisitorCount = Number(editDayVisitorCount);
+  const parsedCarCount = Number(editCarCount);
+  const parsedMotorcycleCount = Number(editMotorcycleCount);
+  const parsedCamperCount = Number(editCamperCount);
+  const parsedVehicleLengthM = editVehicleSize.trim() ? Number(editVehicleSize.replace(",", ".").replace(" m", "")) : null;
+
+  if (
+    !Number.isInteger(parsedAdultCount) || parsedAdultCount < 0 ||
+    !Number.isInteger(parsedChildCount) || parsedChildCount < 0 ||
+    !Number.isInteger(parsedDayVisitorCount) || parsedDayVisitorCount < 0 ||
+    !Number.isInteger(parsedCarCount) || parsedCarCount < 0 ||
+    !Number.isInteger(parsedMotorcycleCount) || parsedMotorcycleCount < 0 ||
+    !Number.isInteger(parsedCamperCount) || parsedCamperCount < 0
+  ) {
+    setEditError("Bitte nur gueltige, nicht-negative Mengen eingeben.");
+    return;
+  }
+
+  if (parsedCamperCount > 0) {
+    if (parsedVehicleLengthM === null || !Number.isFinite(parsedVehicleLengthM) || parsedVehicleLengthM <= 0) {
+      setEditError("Bitte eine gueltige Fahrzeuglaenge fuer Wohnmobil/Wohnwagen eingeben.");
+      return;
+    }
+
+    if (parsedVehicleLengthM > 8 && parsedVehicleLengthM <= 10) {
+      setEditError("Tarif fuer Fahrzeuglaengen zwischen 8 m und 10 m ist nicht definiert.");
+      return;
+    }
+  }
+
+  const parsedPlacePricePerNight = Number(editPlacePricePerNight.replace(",", "."));
+  if (!Number.isFinite(parsedPlacePricePerNight) || parsedPlacePricePerNight < 0) {
+    setEditError("Bitte einen gueltigen Stellplatzpreis pro Nacht eingeben.");
+    return;
+  }
+
   try {
     setEditSaving(true);
     setEditError(null);
@@ -153,6 +252,23 @@ async function handleSaveBooking() {
       start_date: editStartDate,
       end_date: editEndDate,
       guest_name: editGuestName.trim(),
+      guest_street: editGuestStreet.trim(),
+      guest_postal_code: editGuestPostalCode.trim(),
+      guest_city: editGuestCity.trim(),
+      people_count: parsedAdultCount + parsedChildCount,
+      adult_count: parsedAdultCount,
+      child_count: parsedChildCount,
+      day_visitor_count: parsedDayVisitorCount,
+      has_electricity: editHasElectricity,
+      has_waste: editHasWaste,
+      has_rhine_view: editHasRhineView,
+      dog_count: parsedDogCount,
+      car_count: parsedCarCount,
+      motorcycle_count: parsedMotorcycleCount,
+      camper_count: parsedCamperCount,
+      camper_length_m: parsedVehicleLengthM,
+      tent_tariff_code: editTentTariffCode || null,
+      place_price_per_night: parsedPlacePricePerNight,
       vehicle_size: editVehicleSize.trim(),
       tent_count:
       places.find((p) => p.id === editPlaceId)?.type === "Zeltwiese"
@@ -212,6 +328,19 @@ async function handleSaveBooking() {
     link.click();
 
     URL.revokeObjectURL(url);
+  }
+
+  async function openReceipt(bookingId: number) {
+    try {
+      setReceiptError(null);
+      setReceiptLoadingId(bookingId);
+      const receipt = await fetchBookingReceipt(bookingId);
+      setActiveReceipt(receipt);
+    } catch (err: any) {
+      setReceiptError(err.message || "Nachweis konnte nicht geladen werden");
+    } finally {
+      setReceiptLoadingId(null);
+    }
   }
 
   return (
@@ -293,7 +422,7 @@ async function handleSaveBooking() {
                   <th style={thStyle}>Notizen</th>
                   <th style={thStyle}>Erstellt von</th>
                   <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Aktion</th>
+                  <th style={thStyle}>Aktionen</th>
                 </tr>
                 </thead>
 
@@ -322,13 +451,25 @@ async function handleSaveBooking() {
                       <td style={tdStyle}>{getStatusLabel(booking.status)}</td>
 
                       <td style={tdStyle}>
-                        <button
-                            type="button"
-                            onClick={() => openEditDialog(booking)}
-                            style={editButtonStyle}
-                        >
-                          Bearbeiten
-                        </button>
+                        <div style={actionRowStyle}>
+                          <button
+                              type="button"
+                              onClick={() => openReceipt(booking.id)}
+                              disabled={receiptLoadingId === booking.id}
+                              style={receiptButtonStyle}
+                              title="Aufenthaltsnachweis oeffnen"
+                          >
+                            {receiptLoadingId === booking.id ? "Lade..." : "Nachweis"}
+                          </button>
+
+                          <button
+                              type="button"
+                              onClick={() => openEditDialog(booking)}
+                              style={editButtonStyle}
+                          >
+                            Bearbeiten
+                          </button>
+                        </div>
                       </td>
                     </tr>
                 ))}
@@ -336,6 +477,15 @@ async function handleSaveBooking() {
               </table>
             </div>
         )}
+        {receiptError && <div style={modalErrorStyle}>{receiptError}</div>}
+
+        {activeReceipt && (
+          <BookingReceiptModal
+            receipt={activeReceipt}
+            onClose={() => setActiveReceipt(null)}
+          />
+        )}
+
         {editingBooking && (
   <div style={modalOverlayStyle}>
     <div style={modalCardStyle}>
@@ -392,6 +542,33 @@ async function handleSaveBooking() {
         </div>
 
         <div>
+          <label style={formLabelStyle}>Strasse und Hausnummer</label>
+          <input
+            value={editGuestStreet}
+            onChange={(e) => setEditGuestStreet(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>PLZ</label>
+          <input
+            value={editGuestPostalCode}
+            onChange={(e) => setEditGuestPostalCode(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Ort</label>
+          <input
+            value={editGuestCity}
+            onChange={(e) => setEditGuestCity(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
           <label style={formLabelStyle}>Anreise</label>
           <input
             type="date"
@@ -412,11 +589,7 @@ async function handleSaveBooking() {
         </div>
 
         <div>
-          <label style={formLabelStyle}>
-            {places.find((p) => p.id === editPlaceId)?.type === "Zeltwiese"
-              ? "⛺ Zeltgröße"
-              : "🚐 Fahrzeuglänge"}
-          </label>
+          <label style={formLabelStyle}>🚐 Fahrzeuglänge in m</label>
 
           <input
             value={editVehicleSize}
@@ -438,6 +611,140 @@ async function handleSaveBooking() {
             />
           </div>
         )}
+
+        <div>
+          <label style={formLabelStyle}>Erwachsene</label>
+          <input
+            type="number"
+            min="0"
+            value={editAdultCount}
+            onChange={(e) => setEditAdultCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Kinder bis 14 Jahre</label>
+          <input
+            type="number"
+            min="0"
+            value={editChildCount}
+            onChange={(e) => setEditChildCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Tagesbesucher</label>
+          <input
+            type="number"
+            min="0"
+            value={editDayVisitorCount}
+            onChange={(e) => setEditDayVisitorCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Strom</label>
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={editHasElectricity}
+              onChange={(e) => setEditHasElectricity(e.target.checked)}
+            />
+            Strompauschale pro Nacht berechnen
+          </label>
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Muell</label>
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={editHasWaste}
+              onChange={(e) => setEditHasWaste(e.target.checked)}
+            />
+            Muellpauschale pro Tag
+          </label>
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Rheinblick</label>
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={editHasRhineView}
+              onChange={(e) => setEditHasRhineView(e.target.checked)}
+            />
+            Einmalige Zusatzleistung
+          </label>
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Anzahl Hunde</label>
+          <input
+            type="number"
+            min="0"
+            value={editDogCount}
+            onChange={(e) => setEditDogCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Auto</label>
+          <input
+            type="number"
+            min="0"
+            value={editCarCount}
+            onChange={(e) => setEditCarCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Motorrad</label>
+          <input
+            type="number"
+            min="0"
+            value={editMotorcycleCount}
+            onChange={(e) => setEditMotorcycleCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Wohnmobil/Wohnwagen</label>
+          <input
+            type="number"
+            min="0"
+            value={editCamperCount}
+            onChange={(e) => setEditCamperCount(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Zelt-Tarifcode</label>
+          <input
+            value={editTentTariffCode}
+            onChange={(e) => setEditTentTariffCode(e.target.value)}
+            placeholder="z.B. tent_basic"
+            style={formInputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={formLabelStyle}>Stellplatzpreis / Nacht (EUR)</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={editPlacePricePerNight}
+            onChange={(e) => setEditPlacePricePerNight(e.target.value)}
+            style={formInputStyle}
+          />
+        </div>
 
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={formLabelStyle}>Notizen</label>
@@ -602,6 +909,18 @@ const editButtonStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+const receiptButtonStyle: React.CSSProperties = {
+  ...editButtonStyle,
+  border: "1px solid #15803d",
+  color: "#15803d",
+};
+
+const actionRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "0.45rem",
+  flexWrap: "wrap",
+};
+
 const modalOverlayStyle: React.CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -665,6 +984,14 @@ const formLabelStyle: React.CSSProperties = {
   color: "#5f766b",
   fontSize: "0.9rem",
   fontWeight: 700,
+};
+
+const checkboxLabelStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "0.45rem",
+  color: "#355447",
+  fontSize: "0.9rem",
 };
 
 const formInputStyle: React.CSSProperties = {
