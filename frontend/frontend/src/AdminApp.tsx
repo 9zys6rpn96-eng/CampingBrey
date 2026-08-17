@@ -13,6 +13,7 @@ import {
 } from "./services/api";
 import { PlaceList } from "./components/PlaceList.tsx";
 import { CampingMap } from "./components/CampingMap";
+import { OccupancyMatrix } from "./components/OccupancyMatrix";
 import { BookingOverview } from "./components/BookingOverview";
 import { NewBooking } from "./components/NewBooking";
 import { PlaceDetailPanel } from "./components/PlaceDetailPanel";
@@ -97,12 +98,13 @@ function AdminApp() {
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [usersError, setUsersError] = useState<string | null>(null);
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [placeModalTab, setPlaceModalTab] = useState<
-  "booking" | "details"
->("booking");
+   const [users, setUsers] = useState<User[]>([]);
+   const [usersError, setUsersError] = useState<string | null>(null);
+   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+   const [placeModalTab, setPlaceModalTab] = useState<
+   "booking" | "details"
+ >("booking");
+   const [viewMode, setViewMode] = useState<"map" | "matrix">("map");
 
    useEffect(() => {
      async function loadCurrentUser() {
@@ -343,17 +345,38 @@ function AdminApp() {
        setUsersError(err.message || "Fehler beim Löschen");
      }
    }
-   function handleSelectPlace(placeId: number) {
-     if (selectedPlaceId === placeId && bookingModalOpen) {
-       setSelectedPlaceId(null);
-       setBookingModalOpen(false);
-       return;
-     }
+    function handleSelectPlace(placeId: number) {
+      if (selectedPlaceId === placeId && bookingModalOpen) {
+        setSelectedPlaceId(null);
+        setBookingModalOpen(false);
+        return;
+      }
 
-     setSelectedPlaceId(placeId);
-     setPlaceModalTab("booking");
-     setBookingModalOpen(true);
-   }
+      setSelectedPlaceId(placeId);
+      setPlaceModalTab("booking");
+      setBookingModalOpen(true);
+    }
+
+    function handleSelectDateRangeFromMatrix(
+      placeId: number,
+      startDate: string,
+      endDate?: string
+    ) {
+      setSelectedPlaceId(placeId);
+      setSearchStartDate(startDate);
+      if (endDate) {
+        setSearchEndDate(endDate);
+      } else {
+        // Wenn kein Enddatum, setze es auf nächsten Tag
+        const nextDay = addDays(new Date(startDate), 1);
+        const year = nextDay.getFullYear();
+        const month = String(nextDay.getMonth() + 1).padStart(2, "0");
+        const day = String(nextDay.getDate()).padStart(2, "0");
+        setSearchEndDate(`${year}-${month}-${day}`);
+      }
+      setPlaceModalTab("booking");
+      setBookingModalOpen(true);
+    }
 
   if (authLoading) {
     return (
@@ -591,28 +614,68 @@ function AdminApp() {
                 </div>
               </aside>
 
-              <main style={mainColumnStyle}>
-                <section style={cardStyle}>
-                  <div style={cardHeaderStyle}>
-                    <div>
-                      <h2 style={cardTitleStyle}>Karte</h2>
-                      <p style={cardSubtitleStyle}>
-                        Wähle einen Platz direkt über die Karte oder über die Liste links.
-                      </p>
-                    </div>
-                  </div>
+               <main style={mainColumnStyle}>
+                 <section style={cardStyle}>
+                   <div style={cardHeaderStyle}>
+                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
+                       <div>
+                         <h2 style={cardTitleStyle}>
+                           {viewMode === "map" ? "Campingplatzkarte" : "Belegungsmatrix"}
+                         </h2>
+                         <p style={cardSubtitleStyle}>
+                           {viewMode === "map"
+                             ? "Wähle einen Platz direkt über die Karte oder über die Liste links."
+                             : "Zeitliche Übersicht der Platzauslastung und Buchungen."}
+                         </p>
+                       </div>
+                       <div style={viewToggleStyle}>
+                         <button
+                           onClick={() => setViewMode("map")}
+                           style={{
+                             ...viewToggleButtonStyle,
+                             ...(viewMode === "map" ? activeViewToggleButtonStyle : {}),
+                           }}
+                         >
+                           🗺️ Karte
+                         </button>
+                         <button
+                           onClick={() => setViewMode("matrix")}
+                           style={{
+                             ...viewToggleButtonStyle,
+                             ...(viewMode === "matrix" ? activeViewToggleButtonStyle : {}),
+                           }}
+                         >
+                           📊 Belegungsmatrix
+                         </button>
+                       </div>
+                     </div>
+                   </div>
 
-                  <CampingMap
-                    places={places}
-                    placeStatuses={placeStatuses}
-                    bookings={bookings}
-                    selectedPlaceId={selectedPlaceId}
-                    onSelectPlace={handleSelectPlace}
-                    isDeveloper={currentUser.role === "developer"}
-                    availablePlaceIds={availablePlaceIds}
-                    availabilityMode={availabilityMode}
-                  />
-                </section>
+                   {viewMode === "map" ? (
+                     <CampingMap
+                       places={places}
+                       placeStatuses={placeStatuses}
+                       bookings={bookings}
+                       selectedPlaceId={selectedPlaceId}
+                       onSelectPlace={handleSelectPlace}
+                       isDeveloper={currentUser.role === "developer"}
+                       availablePlaceIds={availablePlaceIds}
+                       availabilityMode={availabilityMode}
+                     />
+                   ) : (
+                     <OccupancyMatrix
+                       places={places}
+                       bookings={bookings}
+                       placeStatuses={placeStatuses}
+                       selectedPlaceId={selectedPlaceId}
+                       onSelectPlace={handleSelectPlace}
+                       onSelectDateRange={handleSelectDateRangeFromMatrix}
+                       isDeveloper={currentUser.role === "developer"}
+                       availablePlaceIds={availablePlaceIds}
+                       availabilityMode={availabilityMode}
+                     />
+                   )}
+                 </section>
 
                 <BookingOverview
                   bookings={bookings}
@@ -1319,10 +1382,39 @@ const modalTabButtonStyle: React.CSSProperties = {
 };
 
 const activeModalTabButtonStyle: React.CSSProperties = {
-  border: `1.5px solid ${colors.brand}`,
-  backgroundColor: colors.brandSoft,
-  color: colors.brandDark,
-  fontWeight: 800,
+   border: `1.5px solid ${colors.brand}`,
+   backgroundColor: colors.brandSoft,
+   color: colors.brandDark,
+   fontWeight: 800,
+};
+
+const viewToggleStyle: React.CSSProperties = {
+   display: "flex",
+   gap: "0.5rem",
+   borderRadius: "8px",
+   backgroundColor: "#f8fafc",
+   padding: "0.35rem",
+   border: `1.5px solid ${colors.border}`,
+};
+
+const viewToggleButtonStyle: React.CSSProperties = {
+   padding: "0.65rem 1.2rem",
+   borderRadius: "6px",
+   border: "1px solid transparent",
+   backgroundColor: "transparent",
+   color: colors.muted,
+   cursor: "pointer",
+   fontWeight: 600,
+   fontSize: "0.9rem",
+   transition: "all 0.2s ease",
+};
+
+const activeViewToggleButtonStyle: React.CSSProperties = {
+   backgroundColor: "#ffffff",
+   color: colors.brand,
+   border: `1px solid ${colors.brandSoftBorder}`,
+   fontWeight: 700,
+   boxShadow: "0 2px 6px rgba(0, 0, 0, 0.05)",
 };
 
 export default AdminApp;
