@@ -11,6 +11,14 @@ function formatEuro(value: number) {
   });
 }
 
+function normalizeBookingUiText(value: string) {
+  return value
+    .replace(/Muellpauschale/g, "Müllpauschale")
+    .replace(/Muell/g, "Müll")
+    .replace(/muellpauschale/g, "müllpauschale")
+    .replace(/muell/g, "müll");
+}
+
 interface NewBookingProps {
   place: Place;
   bookings: Booking[];
@@ -812,11 +820,11 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
         </div>
 
         <div>
-          <label style={labelStyle}>Nationalität</label>
+          <label style={labelStyle}>Land</label>
           <input
             value={nationality}
             onChange={(e) => setNationality(e.target.value)}
-            placeholder="z. B. Deutsch"
+            placeholder="z. B. Deutschland"
             style={inputStyle}
           />
         </div>
@@ -861,7 +869,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
                 .filter((tariff) => tariff.code.startsWith("tent_"))
                 .map((tariff) => (
                   <option key={tariff.code} value={tariff.code}>
-                    {tariff.label} ({formatEuro(tariff.price)})
+                    {normalizeBookingUiText(tariff.label)} ({formatEuro(tariff.price)})
                   </option>
                 ))}
             </select>
@@ -1025,7 +1033,7 @@ const [placeEditSaving, setPlaceEditSaving] = useState(false);
               <div style={priceItemListStyle}>
                 {quote.items.map((item) => (
                   <div key={`${item.description}-${item.quantity}`} style={priceItemRowStyle}>
-                    <span>{item.description}</span>
+                    <span>{normalizeBookingUiText(item.description)}</span>
                     <span>
                       {item.quantity} x {formatEuro(item.unit_price)} = {formatEuro(item.total)}
                     </span>

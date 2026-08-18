@@ -26,6 +26,14 @@ function formatEuro(value: number) {
   });
 }
 
+function normalizeReceiptUiText(value: string) {
+  return value
+    .replace(/Muellpauschale/g, "Müllpauschale")
+    .replace(/Muell/g, "Müll")
+    .replace(/muellpauschale/g, "müllpauschale")
+    .replace(/muell/g, "müll");
+}
+
 export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalProps) {
   return (
     <div style={overlayStyle} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -52,7 +60,7 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
             <div>
               {[receipt.guest.postal_code, receipt.guest.city].filter(Boolean).join(" ") || "-"}
             </div>
-            {receipt.guest.nationality && <div>Nationalität: {receipt.guest.nationality}</div>}
+            {receipt.guest.nationality && <div>Land: {receipt.guest.nationality}</div>}
           </section>
 
           <section style={sectionStyleRowStyle}>
@@ -87,7 +95,7 @@ export function BookingReceiptModal({ receipt, onClose }: BookingReceiptModalPro
             <tbody>
               {receipt.items.map((item) => (
                 <tr key={`${item.description}-${item.quantity}`}>
-                  <td style={tdLeftStyle}>{item.description}</td>
+                  <td style={tdLeftStyle}>{normalizeReceiptUiText(item.description)}</td>
                   <td style={tdRightStyle}>{item.quantity}</td>
                   <td style={tdLeftStyle}>{item.unit}</td>
                   <td style={tdRightStyle}>{formatEuro(item.unit_price)}</td>

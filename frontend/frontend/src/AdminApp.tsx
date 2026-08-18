@@ -11,7 +11,6 @@ import {
   fetchUsers,
   deleteUser,
 } from "./services/api";
-import { PlaceList } from "./components/PlaceList.tsx";
 import { CampingMap } from "./components/CampingMap";
 import { OccupancyMatrix } from "./components/OccupancyMatrix";
 import { BookingOverview } from "./components/BookingOverview";
@@ -591,29 +590,9 @@ function AdminApp() {
             <div
               style={{
                 ...dashboardGridStyle,
-                gridTemplateColumns: isMobile || isTablet ? "1fr" : dashboardGridStyle.gridTemplateColumns,
+                gridTemplateColumns: "1fr",
               }}
             >
-              <aside style={sidebarCardStyle}>
-                <div style={cardHeaderStyle}>
-                  <div>
-                    <h2 style={cardTitleStyle}>Plätze</h2>
-                    <p style={cardSubtitleStyle}>
-                      {places.length} Plätze verfügbar
-                    </p>
-                  </div>
-                </div>
-
-                <div style={sidebarContentStyle}>
-                  <PlaceList
-                      places={places}
-                      placeStatuses={placeStatuses}
-                      selectedPlaceId={selectedPlaceId}
-                      onSelect={handleSelectPlace}
-                  />
-                </div>
-              </aside>
-
                <main style={mainColumnStyle}>
                  <section style={cardStyle}>
                    <div style={cardHeaderStyle}>
@@ -624,7 +603,7 @@ function AdminApp() {
                          </h2>
                          <p style={cardSubtitleStyle}>
                            {viewMode === "map"
-                             ? "Wähle einen Platz direkt über die Karte oder über die Liste links."
+                              ? "Wähle einen Platz direkt über die Karte."
                              : "Zeitliche Übersicht der Platzauslastung und Buchungen."}
                          </p>
                        </div>
@@ -1031,27 +1010,11 @@ const pageContentStyle: React.CSSProperties = {
 
 const dashboardGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "340px minmax(0, 1fr)",
+  gridTemplateColumns: "minmax(0, 1fr)",
   gap: "1.5rem",
   alignItems: "start",
 };
 
-const sidebarCardStyle: React.CSSProperties = {
-  backgroundColor: colors.cardBg,
-  border: `1.5px solid ${colors.border}`,
-  borderRadius: "12px",
-  padding: "1.5rem",
-  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-  minHeight: "700px",
-  boxSizing: "border-box",
-  transition: "box-shadow 0.3s ease",
-};
-
-const sidebarContentStyle: React.CSSProperties = {
-  maxHeight: "720px",
-  overflowY: "auto",
-  paddingRight: "0.5rem",
-};
 
 const mainColumnStyle: React.CSSProperties = {
   display: "grid",

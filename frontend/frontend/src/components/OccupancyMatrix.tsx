@@ -47,6 +47,17 @@ function formatDateFull(date: Date) {
   });
 }
 
+function daysBetweenIso(startIso: string, endIso: string) {
+  const start = parseIsoDate(startIso);
+  const end = parseIsoDate(endIso);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / msPerDay));
+}
+
+function minIsoDate(a: string, b: string) {
+  return a <= b ? a : b;
+}
+
 function isZeltwiese(place: Place): boolean {
   return place.type === "Zeltwiese";
 }
@@ -110,6 +121,7 @@ function Tooltip({
         fontSize: "0.85rem",
         color: "#1f2937",
         lineHeight: "1.4",
+        pointerEvents: "none",
       }}
     >
       {content}
@@ -167,6 +179,9 @@ export function OccupancyMatrix({
   };
 
   const todayIso = toIsoDate(new Date());
+  const viewEndExclusiveIso = toIsoDate(
+    addDays(parseIsoDate(daysInView[daysInView.length - 1]), 1)
+  );
 
   return (
     <div style={matrixContainerStyle}>
@@ -239,7 +254,9 @@ export function OccupancyMatrix({
         <div style={matrixGridWrapperStyle}>
           {/* Platznamen-Spalte (sticky) */}
           <div style={placeNamesColumnStyle}>
-            <div style={headerCellPlaceStyle}></div>
+            <div style={headerCellPlaceStyle}>
+              <span style={placeHeaderLabelStyle}>Platz</span>
+            </div>
             {places.map((place) => (
               <div
                 key={place.id}
@@ -292,11 +309,6 @@ export function OccupancyMatrix({
                   const bookingForDay = placeBookings.find(
                     (b) => b.start_date <= dateIso && dateIso < b.end_date
                   );
-
-                  // Ist der erste Tag einer Buchung?
-                  const isBookingStart = bookingForDay && bookingForDay.start_date === dateIso;
-                  // Ist der letzte Tag einer Buchung?
-                  const isBookingEnd = bookingForDay && dateIso >= bookingForDay.end_date;
 
                   let cellBackgroundColor = "transparent";
                   let cellBorderColor = "#e2e8f0";
@@ -369,6 +381,29 @@ export function OccupancyMatrix({
                   }
 
                   // Für normale Plätze - mit Buchungsbalken
+                  const isFirstVisibleDay = dateIso === daysInView[0];
+                  const isBookingSegmentStart = Boolean(
+                    bookingForDay &&
+                      (bookingForDay.start_date === dateIso ||
+                        (isFirstVisibleDay && bookingForDay.start_date < dateIso))
+                  );
+
+                  const isBookingActualStart = Boolean(
+                    bookingForDay && bookingForDay.start_date === dateIso
+                  );
+
+                  const bookingVisibleEndIso = bookingForDay
+                    ? minIsoDate(bookingForDay.end_date, viewEndExclusiveIso)
+                    : dateIso;
+
+                  const bookingSpanDays = bookingForDay
+                    ? Math.max(1, daysBetweenIso(dateIso, bookingVisibleEndIso))
+                    : 1;
+
+                  const isBookingVisibleEnd = Boolean(
+                    bookingForDay && bookingForDay.end_date <= viewEndExclusiveIso
+                  );
+
                   return (
                     <div
                       key={`cell-${place.id}-${dateIso}`}
@@ -385,42 +420,78 @@ export function OccupancyMatrix({
                         }
                       }}
                     >
-                      {/* Buchungsbalken - nur an bestimmten Positionen zeigen */}
-                      {bookingForDay && (
+                      {/* Buchungsbalken wird pro zusammenhaengendem Segment nur einmal gerendert. */}
+                      {bookingForDay && isBookingSegmentStart && (
                         <div
                           style={{
                             position: "absolute",
-                            left: isBookingStart ? "2px" : "0",
-                            right: isBookingEnd ? "2px" : "0",
+                            left: 0,
                             top: "50%",
                             transform: "translateY(-50%)",
                             backgroundColor: "rgba(220,38,38,0.75)",
+                            width: `${bookingSpanDays * 120}px`,
                             height: "24px",
-                            borderRadius: isBookingStart ? "4px 0 0 4px" : isBookingEnd ? "0 4px 4px 0" : "0",
-                            borderLeft: isBookingStart ? "1px solid rgba(180,0,0,0.5)" : "none",
-                            borderRight: isBookingEnd ? "1px solid rgba(180,0,0,0.5)" : "none",
+                            borderRadius: isBookingActualStart
+                              ? isBookingVisibleEnd
+                                ? "4px"
+                                : "4px 0 0 4px"
+                              : isBookingVisibleEnd
+                                ? "0 4px 4px 0"
+                                : "0",
+                            borderLeft: isBookingActualStart
+                              ? "2px solid rgba(255, 255, 255, 0.8)"
+                              : "none",
+                            borderRight: isBookingVisibleEnd
+                              ? "1px solid rgba(180,0,0,0.5)"
+                              : "none",
                             cursor: "pointer",
                             transition: "background-color 0.2s ease",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-start",
+                            overflow: "hidden",
+                            padding: "0 6px",
+                            boxSizing: "border-box",
+                            zIndex: 2,
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(220,38,38,0.9)";
                             const rect = e.currentTarget.getBoundingClientRect();
+                            const relativeX = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left));
+                            const dayOffset = Math.min(
+                              bookingSpanDays - 1,
+                              Math.max(0, Math.floor(relativeX / 120))
+                            );
                             setHoveredCell({
                               placeId: place.id,
-                              dateIso,
+                              dateIso: toIsoDate(addDays(parseIsoDate(dateIso), dayOffset)),
                               x: rect.left + rect.width / 2,
                               y: rect.top - 10,
                             });
                           }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(220,38,38,0.75)";
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const relativeX = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left));
+                            const dayOffset = Math.min(
+                              bookingSpanDays - 1,
+                              Math.max(0, Math.floor(relativeX / 120))
+                            );
+                            setHoveredCell({
+                              placeId: place.id,
+                              dateIso: toIsoDate(addDays(parseIsoDate(dateIso), dayOffset)),
+                              x: e.clientX,
+                              y: e.clientY - 16,
+                            });
+                          }}
+                          onMouseLeave={() => {
                             setHoveredCell(null);
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectPlace(place.id);
                           }}
-                        />
+                        >
+                          <span style={bookingBarTextStyle}>{bookingForDay.guest_name}</span>
+                        </div>
                       )}
                     </div>
                   );
@@ -628,6 +699,18 @@ const headerCellPlaceStyle: React.CSSProperties = {
   top: 0,
   left: 0,
   zIndex: 13,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 800,
+  color: "#355447",
+  fontSize: "0.85rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+};
+
+const placeHeaderLabelStyle: React.CSSProperties = {
+  whiteSpace: "nowrap",
 };
 
 const placeRowStyle: React.CSSProperties = {
@@ -721,6 +804,18 @@ const zeltwieseCellContentStyle: React.CSSProperties = {
   color: "#163126",
   fontSize: "0.85rem",
   textAlign: "center",
+};
+
+const bookingBarTextStyle: React.CSSProperties = {
+  color: "#ffffff",
+  fontSize: "0.84rem",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  width: "100%",
+  textAlign: "center",
+  lineHeight: 1.1,
 };
 
 

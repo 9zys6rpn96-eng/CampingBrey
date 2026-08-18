@@ -299,7 +299,7 @@ async function handleSaveBooking() {
       [
         "Platz",
         "Gast",
-        "Nationalität",
+        "Land",
         "Von",
         "Bis",
         "Nächte",
@@ -401,7 +401,7 @@ async function handleSaveBooking() {
               type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Gast, Platz, Nationalität, Notiz, Status suchen …"
+              placeholder="Gast, Platz, Land, Notiz, Status suchen …"
               style={searchInputStyle}
           />
 
@@ -590,11 +590,11 @@ async function handleSaveBooking() {
         </div>
 
         <div>
-          <label style={formLabelStyle}>Nationalität</label>
+          <label style={formLabelStyle}>Land</label>
           <input
             value={editNationality}
             onChange={(e) => setEditNationality(e.target.value)}
-            placeholder="z. B. Deutsch"
+            placeholder="z. B. Deutschland"
             style={formInputStyle}
           />
         </div>

@@ -28,6 +28,14 @@ function escapeHtml(value: string | number | null | undefined) {
     .replace(/'/g, "&#039;");
 }
 
+function normalizeReceiptUiText(value: string) {
+  return value
+    .replace(/Muellpauschale/g, "Müllpauschale")
+    .replace(/Muell/g, "Müll")
+    .replace(/muellpauschale/g, "müllpauschale")
+    .replace(/muell/g, "müll");
+}
+
 export function printBookingReceipt(receipt: BookingReceipt) {
   const printWindow = window.open("", "_blank", "width=900,height=1200");
   if (!printWindow) {
@@ -71,7 +79,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
       .map(
         (item) => `
           <tr>
-            <td>${escapeHtml(item.description)}</td>
+            <td>${escapeHtml(normalizeReceiptUiText(item.description))}</td>
             <td class="num">${escapeHtml(item.quantity)}</td>
             <td>${escapeHtml(item.unit)}</td>
             <td class="num">${escapeHtml(formatEuro(item.unit_price))}</td>
@@ -132,7 +140,7 @@ export function printBookingReceipt(receipt: BookingReceipt) {
         <p>${escapeHtml(receipt.guest.name)}</p>
         <p>${escapeHtml(receipt.guest.street || "")}</p>
         <p>${escapeHtml([receipt.guest.postal_code, receipt.guest.city].filter(Boolean).join(" "))}</p>
-        ${receipt.guest.nationality ? `<p><strong>Nationalität:</strong> ${escapeHtml(receipt.guest.nationality)}</p>` : ""}
+        ${receipt.guest.nationality ? `<p><strong>Land:</strong> ${escapeHtml(receipt.guest.nationality)}</p>` : ""}
       </div>
       <div class="col">
         <h2>Buchung</h2>
