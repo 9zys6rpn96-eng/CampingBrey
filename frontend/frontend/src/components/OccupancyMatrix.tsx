@@ -41,10 +41,14 @@ function parseIsoDate(isoString: string) {
 }
 
 function formatDateShort(date: Date) {
-  return date.toLocaleDateString("de-DE", {
+  const weekday = date.toLocaleDateString("de-DE", {
     weekday: "short",
+  }).replace(/,$/, "");
+  const dayMonth = date.toLocaleDateString("de-DE", {
     day: "2-digit",
+    month: "2-digit",
   });
+  return `${weekday} ${dayMonth}`;
 }
 
 function formatDateFull(date: Date) {
@@ -328,7 +332,6 @@ export function OccupancyMatrix({
                     <div style={dateHeaderDayStyle}>
                       {formatDateShort(date)}
                     </div>
-                    <div style={dateHeaderDateStyle}>{date.getDate()}</div>
                   </div>
                 );
               })}
@@ -833,12 +836,6 @@ const dateHeaderDayStyle: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-const dateHeaderDateStyle: React.CSSProperties = {
-  fontSize: "1.1rem",
-  fontWeight: 800,
-  color: "#1f2937",
-  marginTop: "0.2rem",
-};
 
 const placeRowGridStyle: React.CSSProperties = {
   display: "flex",
