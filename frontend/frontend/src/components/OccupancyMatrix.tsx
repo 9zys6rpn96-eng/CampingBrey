@@ -776,8 +776,8 @@ const placeRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  height: "80px",
-  padding: "0.5rem",
+  height: "56px",
+  padding: "0.25rem",
   borderBottom: "1px solid #e2e8f0",
   cursor: "pointer",
   transition: "background-color 0.2s ease",
@@ -844,8 +844,8 @@ const placeRowGridStyle: React.CSSProperties = {
 
 const cellStyle: React.CSSProperties = {
   flex: "0 0 120px",
-  height: "80px",
-  padding: "0.5rem",
+  height: "56px",
+  padding: "0.25rem",
   borderRight: "1px solid #e2e8f0",
   display: "flex",
   alignItems: "center",
