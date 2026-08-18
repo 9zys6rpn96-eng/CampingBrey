@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Place, Booking, PlaceStatus } from "../types";
 
 interface OccupancyMatrixProps {
@@ -71,6 +71,8 @@ function minIsoDate(a: string, b: string) {
 }
 
 const DAY_CELL_WIDTH = 120;
+const PLACE_COLUMN_WIDTH = 140;
+const MATRIX_ROW_HEIGHT = 56;
 const INITIAL_DAY_COUNT = 45;
 const DAY_LOAD_CHUNK = 30;
 const RIGHT_EDGE_LOAD_THRESHOLD_PX = 420;
@@ -161,6 +163,13 @@ export function OccupancyMatrix({
     x: number;
     y: number;
   } | null>(null);
+  const [visibleDateRange, setVisibleDateRange] = useState<{
+    startIso: string;
+    endIso: string;
+  }>({
+    startIso: viewStartDate,
+    endIso: viewStartDate,
+  });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isAppendingDaysRef = useRef(false);
@@ -200,9 +209,42 @@ export function OccupancyMatrix({
     setViewStartDate(toIsoDate(addDays(parseIsoDate(viewStartDate), 7)));
   };
 
+  const updateVisibleDateRange = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el || daysInView.length === 0) return;
+
+    const startIndex = Math.max(0, Math.floor(el.scrollLeft / DAY_CELL_WIDTH));
+    const visibleDays = Math.max(
+      1,
+      Math.ceil(Math.max(0, el.clientWidth - PLACE_COLUMN_WIDTH) / DAY_CELL_WIDTH)
+    );
+    const endIndex = Math.min(daysInView.length - 1, startIndex + visibleDays - 1);
+
+    const nextStart = daysInView[startIndex] ?? daysInView[0];
+    const nextEnd = daysInView[endIndex] ?? daysInView[daysInView.length - 1];
+
+    setVisibleDateRange((prev) =>
+      prev.startIso === nextStart && prev.endIso === nextEnd
+        ? prev
+        : { startIso: nextStart, endIso: nextEnd }
+    );
+  }, [daysInView]);
+
+  useEffect(() => {
+    updateVisibleDateRange();
+  }, [updateVisibleDateRange]);
+
+  useEffect(() => {
+    const onResize = () => updateVisibleDateRange();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [updateVisibleDateRange]);
+
   const handleHorizontalScroll = () => {
     const el = scrollContainerRef.current;
     if (!el || isAppendingDaysRef.current) return;
+
+    updateVisibleDateRange();
 
     const remaining = el.scrollWidth - (el.scrollLeft + el.clientWidth);
     if (remaining > RIGHT_EDGE_LOAD_THRESHOLD_PX) return;
@@ -246,10 +288,8 @@ export function OccupancyMatrix({
             Weiter →
           </button>
           <span style={dateRangeStyle}>
-            {formatDateFull(parseIsoDate(viewStartDate))} –{" "}
-            {formatDateFull(
-              parseIsoDate(daysInView[daysInView.length - 1])
-            )}
+            {formatDateFull(parseIsoDate(visibleDateRange.startIso))} –{" "}
+            {formatDateFull(parseIsoDate(visibleDateRange.endIso))}
           </span>
         </div>
 
@@ -297,11 +337,15 @@ export function OccupancyMatrix({
             <div style={headerCellPlaceStyle}>
               <span style={placeHeaderLabelStyle}>Platz</span>
             </div>
-            {places.map((place) => (
+            {places.map((place, placeIndex) => {
+              const rowBackgroundColor = placeIndex % 2 === 0 ? "#ffffff" : "#f8fafc";
+
+              return (
               <div
                 key={place.id}
                 style={{
                   ...placeRowStyle,
+                  backgroundColor: rowBackgroundColor,
                   ...(selectedPlaceId === place.id
                     ? selectedPlaceRowStyle
                     : {}),
@@ -310,7 +354,8 @@ export function OccupancyMatrix({
               >
                 <div style={placeNameStyle}>{place.name}</div>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           {/* Tage und Buchungen */}
@@ -338,8 +383,17 @@ export function OccupancyMatrix({
             </div>
 
             {/* Platz-Reihen */}
-            {places.map((place) => (
-              <div key={`place-row-${place.id}`} style={placeRowGridStyle}>
+            {places.map((place, placeIndex) => {
+              const rowBackgroundColor = placeIndex % 2 === 0 ? "#ffffff" : "#f8fafc";
+
+              return (
+              <div
+                key={`place-row-${place.id}`}
+                style={{
+                  ...placeRowGridStyle,
+                  backgroundColor: rowBackgroundColor,
+                }}
+              >
                 {daysInView.map((dateIso) => {
                   const isToday = dateIso === todayIso;
                   const placeBookings = bookingsByPlace.get(place.id) || [];
@@ -547,7 +601,8 @@ export function OccupancyMatrix({
                   );
                 })}
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       </div>
@@ -747,7 +802,7 @@ const placeNamesColumnStyle: React.CSSProperties = {
   zIndex: 11,
   backgroundColor: "#ffffff",
   borderRight: "1px solid #e2e8f0",
-  minWidth: "140px",
+  minWidth: `${PLACE_COLUMN_WIDTH}px`,
 };
 
 const headerCellPlaceStyle: React.CSSProperties = {
@@ -776,8 +831,9 @@ const placeRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  height: "56px",
-  padding: "0.25rem",
+  height: `${MATRIX_ROW_HEIGHT}px`,
+  padding: "0 0.25rem",
+  boxSizing: "border-box",
   borderBottom: "1px solid #e2e8f0",
   cursor: "pointer",
   transition: "background-color 0.2s ease",
@@ -839,14 +895,15 @@ const dateHeaderDayStyle: React.CSSProperties = {
 
 const placeRowGridStyle: React.CSSProperties = {
   display: "flex",
-  borderBottom: "1px solid #e2e8f0",
 };
 
 const cellStyle: React.CSSProperties = {
   flex: "0 0 120px",
-  height: "56px",
-  padding: "0.25rem",
+  height: `${MATRIX_ROW_HEIGHT}px`,
+  padding: "0",
+  boxSizing: "border-box",
   borderRight: "1px solid #e2e8f0",
+  borderBottom: "1px solid #e2e8f0",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
