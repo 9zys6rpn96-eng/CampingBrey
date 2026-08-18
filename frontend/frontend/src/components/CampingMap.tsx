@@ -6,7 +6,15 @@ interface CampingMapProps {
   places: Place[];
   placeStatuses: PlaceStatus[];
   selectedPlaceId: number | null;
-  onSelectPlace: (id: number) => void;
+  onSelectPlace: (
+    id: number,
+    options?: {
+      focusDateIso?: string;
+      focusBookingId?: number;
+      preferredTab?: "booking" | "details";
+      forceOpen?: boolean;
+    }
+  ) => void;
   isDeveloper: boolean;
   bookings: Booking[];
   availablePlaceIds?: number[];
@@ -519,7 +527,31 @@ export function CampingMap({
                           if (isUnavailableForSearch) return;
 
                           e.stopPropagation();
-                          onSelectPlace(place.id);
+                          const activeBookings = bookings
+                            .filter(
+                              (booking) =>
+                                booking.place_id === place.id &&
+                                booking.start_date <= todayIso &&
+                                todayIso < booking.end_date
+                            )
+                            .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+                          if (activeBookings.length > 0) {
+                            onSelectPlace(place.id, {
+                              focusDateIso: todayIso,
+                              focusBookingId:
+                                activeBookings.length === 1
+                                  ? activeBookings[0].id
+                                  : undefined,
+                              preferredTab: "details",
+                              forceOpen: true,
+                            });
+                            return;
+                          }
+
+                          onSelectPlace(place.id, {
+                            preferredTab: "booking",
+                          });
                         }}
                         onDoubleClick={(e) => {
                           if (editMode) return;

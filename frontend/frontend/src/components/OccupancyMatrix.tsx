@@ -6,7 +6,15 @@ interface OccupancyMatrixProps {
   bookings: Booking[];
   placeStatuses: PlaceStatus[];
   selectedPlaceId: number | null;
-  onSelectPlace: (id: number) => void;
+  onSelectPlace: (
+    id: number,
+    options?: {
+      focusDateIso?: string;
+      focusBookingId?: number;
+      preferredTab?: "booking" | "details";
+      forceOpen?: boolean;
+    }
+  ) => void;
   onSelectDateRange?: (placeId: number, startDate: string, endDate?: string) => void;
   isDeveloper: boolean;
   availablePlaceIds?: number[];
@@ -57,6 +65,11 @@ function daysBetweenIso(startIso: string, endIso: string) {
 function minIsoDate(a: string, b: string) {
   return a <= b ? a : b;
 }
+
+const DAY_CELL_WIDTH = 120;
+const INITIAL_DAY_COUNT = 45;
+const DAY_LOAD_CHUNK = 30;
+const RIGHT_EDGE_LOAD_THRESHOLD_PX = 420;
 
 function isZeltwiese(place: Place): boolean {
   return place.type === "Zeltwiese";
@@ -137,6 +150,7 @@ export function OccupancyMatrix({
   onSelectDateRange,
 }: OccupancyMatrixProps) {
   const [viewStartDate, setViewStartDate] = useState(() => toIsoDate(new Date()));
+  const [dayCount, setDayCount] = useState(INITIAL_DAY_COUNT);
   const [hoveredCell, setHoveredCell] = useState<{
     placeId: number;
     dateIso: string;
@@ -145,7 +159,7 @@ export function OccupancyMatrix({
   } | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const dayCount = 14;
+  const isAppendingDaysRef = useRef(false);
 
   // Berechne Tage im sichtbaren Fenster
   const daysInView = useMemo(() => {
@@ -155,7 +169,7 @@ export function OccupancyMatrix({
       days.push(toIsoDate(d));
     }
     return days;
-  }, [viewStartDate]);
+  }, [viewStartDate, dayCount]);
 
   // Berechne Buchungen gruppiert nach Platz
   const bookingsByPlace = useMemo(() => {
@@ -171,11 +185,29 @@ export function OccupancyMatrix({
   };
 
   const handleNavigationToday = () => {
+    setDayCount(INITIAL_DAY_COUNT);
     setViewStartDate(toIsoDate(new Date()));
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
   };
 
   const handleNavigationNext = () => {
     setViewStartDate(toIsoDate(addDays(parseIsoDate(viewStartDate), 7)));
+  };
+
+  const handleHorizontalScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el || isAppendingDaysRef.current) return;
+
+    const remaining = el.scrollWidth - (el.scrollLeft + el.clientWidth);
+    if (remaining > RIGHT_EDGE_LOAD_THRESHOLD_PX) return;
+
+    isAppendingDaysRef.current = true;
+    setDayCount((prev) => prev + DAY_LOAD_CHUNK);
+    window.requestAnimationFrame(() => {
+      isAppendingDaysRef.current = false;
+    });
   };
 
   const todayIso = toIsoDate(new Date());
@@ -250,7 +282,11 @@ export function OccupancyMatrix({
       </div>
 
       {/* Matrix-Container mit Horizontal-Scroll */}
-      <div style={scrollContainerStyle} ref={scrollContainerRef}>
+      <div
+        style={scrollContainerStyle}
+        ref={scrollContainerRef}
+        onScroll={handleHorizontalScroll}
+      >
         <div style={matrixGridWrapperStyle}>
           {/* Platznamen-Spalte (sticky) */}
           <div style={placeNamesColumnStyle}>
@@ -429,7 +465,7 @@ export function OccupancyMatrix({
                             top: "50%",
                             transform: "translateY(-50%)",
                             backgroundColor: "rgba(220,38,38,0.75)",
-                            width: `${bookingSpanDays * 120}px`,
+                            width: `${bookingSpanDays * DAY_CELL_WIDTH}px`,
                             height: "24px",
                             borderRadius: isBookingActualStart
                               ? isBookingVisibleEnd
@@ -459,7 +495,7 @@ export function OccupancyMatrix({
                             const relativeX = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left));
                             const dayOffset = Math.min(
                               bookingSpanDays - 1,
-                              Math.max(0, Math.floor(relativeX / 120))
+                              Math.max(0, Math.floor(relativeX / DAY_CELL_WIDTH))
                             );
                             setHoveredCell({
                               placeId: place.id,
@@ -473,7 +509,7 @@ export function OccupancyMatrix({
                             const relativeX = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left));
                             const dayOffset = Math.min(
                               bookingSpanDays - 1,
-                              Math.max(0, Math.floor(relativeX / 120))
+                              Math.max(0, Math.floor(relativeX / DAY_CELL_WIDTH))
                             );
                             setHoveredCell({
                               placeId: place.id,
@@ -487,7 +523,18 @@ export function OccupancyMatrix({
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onSelectPlace(place.id);
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const relativeX = Math.max(0, Math.min(rect.width - 1, e.clientX - rect.left));
+                            const dayOffset = Math.min(
+                              bookingSpanDays - 1,
+                              Math.max(0, Math.floor(relativeX / DAY_CELL_WIDTH))
+                            );
+                            onSelectPlace(place.id, {
+                              focusDateIso: toIsoDate(addDays(parseIsoDate(dateIso), dayOffset)),
+                              focusBookingId: bookingForDay.id,
+                              preferredTab: "details",
+                              forceOpen: true,
+                            });
                           }}
                         >
                           <span style={bookingBarTextStyle}>{bookingForDay.guest_name}</span>
@@ -609,7 +656,10 @@ const matrixContainerStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: "1rem",
   width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   height: "auto",
+  overflowX: "hidden",
 };
 
 const matrixHeaderStyle: React.CSSProperties = {
@@ -667,8 +717,12 @@ const legendDotStyle: React.CSSProperties = {
 };
 
 const scrollContainerStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   overflowX: "auto",
   overflowY: "auto",
+  boxSizing: "border-box",
   borderRadius: "0.75rem",
   border: "1px solid #e2e8f0",
   backgroundColor: "#ffffff",
@@ -677,7 +731,9 @@ const scrollContainerStyle: React.CSSProperties = {
 
 const matrixGridWrapperStyle: React.CSSProperties = {
   display: "flex",
+  maxWidth: "none",
   minWidth: "min-content",
+  width: "max-content",
 };
 
 const placeNamesColumnStyle: React.CSSProperties = {
@@ -739,6 +795,8 @@ const placeNameStyle: React.CSSProperties = {
 const daysGridContainerStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
+  minWidth: 0,
+  flex: "0 0 auto",
 };
 
 const dateHeaderRowStyle: React.CSSProperties = {

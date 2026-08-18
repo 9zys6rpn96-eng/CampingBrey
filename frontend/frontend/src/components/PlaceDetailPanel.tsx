@@ -15,6 +15,8 @@ interface Props {
   initialVehicleLengthM?: string;
   showBookingForm?: boolean;
   onBookingFinished?: () => void;
+  focusedDateIso?: string | null;
+  focusedBookingId?: number | null;
 }
 
 function formatDate(dateString: string) {
@@ -79,6 +81,31 @@ function addDays(date: Date, days: number) {
   return result;
 }
 
+function getNights(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / msPerDay));
+}
+
+function getPlaceStatusLabel(
+  isBlockedPlace: boolean,
+  isPermanentPlace: boolean,
+  isTentArea: boolean,
+  currentOccupancy: number,
+  capacity: number,
+  isCurrentlyBooked: boolean
+) {
+  if (isBlockedPlace) return "Gesperrt";
+  if (isPermanentPlace) return "Dauercamper";
+  if (isTentArea) {
+    if (currentOccupancy >= capacity) return "Voll";
+    if (currentOccupancy > 0) return "Teilbelegt";
+    return "Frei";
+  }
+  return isCurrentlyBooked ? "Belegt" : "Frei";
+}
+
 function getNextWeekendRange() {
   const today = new Date();
   const day = today.getDay(); // 0 = So, 1 = Mo, ..., 6 = Sa
@@ -116,7 +143,7 @@ function getNextWeekRange() {
 const PLACE_TYPE_OPTIONS = ["Stellplatz", "Dauercamper", "Zeltwiese", "Gesperrt"] as const;
 const CUSTOM_PLACE_TYPE = "__custom__";
 
-export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces, initialStartDate = "", initialEndDate = "", initialVehicleLengthM = "", onBookingFinished, showBookingForm = true, }: Props) {
+export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPlaces, initialStartDate = "", initialEndDate = "", initialVehicleLengthM = "", onBookingFinished, showBookingForm = true, focusedDateIso = null, focusedBookingId = null, }: Props) {
   const { isMobile, isTablet } = useViewport();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -182,6 +209,29 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
     () => [...bookings].sort((a, b) => a.start_date.localeCompare(b.start_date)),
     [bookings]
   );
+
+  const activeBookingsForFocusDate = useMemo(() => {
+    if (!focusedDateIso) return [];
+    return sortedBookings.filter(
+      (booking) =>
+        booking.start_date <= focusedDateIso && focusedDateIso < booking.end_date
+    );
+  }, [sortedBookings, focusedDateIso]);
+
+  const focusedBookings = useMemo(() => {
+    if (!focusedDateIso) return [];
+
+    if (focusedBookingId !== null) {
+      const exact = sortedBookings.find((booking) => booking.id === focusedBookingId);
+      if (exact) {
+        return [exact];
+      }
+    }
+
+    return activeBookingsForFocusDate;
+  }, [sortedBookings, focusedDateIso, focusedBookingId, activeBookingsForFocusDate]);
+
+  const showFocusedBookingSection = focusedDateIso !== null && focusedBookings.length > 0;
 
   if (!place) {
     return (
@@ -706,6 +756,61 @@ const isTentAreaFull =
                   </div>
               </div>
           </section>
+          {showFocusedBookingSection && (
+            <section style={panelStyle}>
+              <div style={sectionHeaderStyle}>
+                <h3 style={sectionTitleStyle}>Buchungsinformationen</h3>
+                <p style={sectionSubtitleStyle}>
+                  Status: {getPlaceStatusLabel(
+                    isBlockedPlace,
+                    isPermanentPlace,
+                    isTentArea,
+                    currentOccupancy,
+                    currentPlace.capacity,
+                    isCurrentlyBooked
+                  )}
+                </p>
+                <p style={sectionSubtitleStyle}>Datum: {formatDate(focusedDateIso)}</p>
+                {isTentArea && (
+                  <p style={sectionSubtitleStyle}>
+                    Belegung: {currentOccupancy} / {currentPlace.capacity}
+                  </p>
+                )}
+              </div>
+
+              <div style={bookingDetailsListStyle}>
+                {focusedBookings.map((booking) => (
+                  <article key={booking.id} style={bookingDetailsCardStyle}>
+                    <div style={bookingDetailsTitleStyle}>{booking.guest_name}</div>
+                    <div style={bookingDetailsMetaStyle}>
+                      {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
+                      {` (${getNights(booking.start_date, booking.end_date)} ${getNights(booking.start_date, booking.end_date) === 1 ? "Übernachtung" : "Übernachtungen"})`}
+                    </div>
+                    {booking.nationality && (
+                      <div style={bookingDetailsMetaStyle}>Land: {booking.nationality}</div>
+                    )}
+                    {booking.vehicle_size && (
+                      <div style={bookingDetailsMetaStyle}>Fahrzeug: {booking.vehicle_size}</div>
+                    )}
+                    {booking.camper_length_m !== null && booking.camper_length_m !== undefined && (
+                      <div style={bookingDetailsMetaStyle}>
+                        Fahrzeuglänge: {String(booking.camper_length_m).replace(".", ",")} m
+                      </div>
+                    )}
+                    {(booking.adult_count || booking.people_count || booking.child_count) && (
+                      <div style={bookingDetailsMetaStyle}>
+                        Personen: {booking.adult_count ?? booking.people_count ?? 0}
+                        {booking.child_count ? ` + ${booking.child_count} Kinder` : ""}
+                      </div>
+                    )}
+                    {booking.notes && (
+                      <div style={bookingDetailsNoteStyle}>Notizen: {booking.notes}</div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
           {canEditPlaces && (
               <section style={panelStyle}>
                   <div style={sectionHeaderStyle}>
@@ -1182,4 +1287,34 @@ const quickActionButtonStyle: React.CSSProperties = {
     fontSize: "0.82rem",
     fontWeight: 700,
 };
+
+    const bookingDetailsListStyle: React.CSSProperties = {
+      display: "grid",
+      gap: "0.7rem",
+    };
+
+    const bookingDetailsCardStyle: React.CSSProperties = {
+      border: "1px solid #e5e7eb",
+      borderRadius: "0.8rem",
+      padding: "0.75rem 0.85rem",
+      backgroundColor: "#f8fafc",
+    };
+
+    const bookingDetailsTitleStyle: React.CSSProperties = {
+      fontWeight: 800,
+      color: "#163126",
+      marginBottom: "0.3rem",
+    };
+
+    const bookingDetailsMetaStyle: React.CSSProperties = {
+      fontSize: "0.9rem",
+      color: "#374151",
+      lineHeight: 1.45,
+    };
+
+    const bookingDetailsNoteStyle: React.CSSProperties = {
+      marginTop: "0.35rem",
+      fontSize: "0.9rem",
+      color: "#1f2937",
+    };
 

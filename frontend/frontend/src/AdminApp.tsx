@@ -57,6 +57,13 @@ function sortPlacesByName(places: Place[]) {
   });
 }
 
+type PlaceSelectionOptions = {
+  focusDateIso?: string;
+  focusBookingId?: number;
+  preferredTab?: "booking" | "details";
+  forceOpen?: boolean;
+};
+
 function AdminApp() {
   const { isMobile, isTablet } = useViewport();
 
@@ -104,6 +111,8 @@ function AdminApp() {
    "booking" | "details"
  >("booking");
    const [viewMode, setViewMode] = useState<"map" | "matrix">("map");
+   const [selectedFocusDateIso, setSelectedFocusDateIso] = useState<string | null>(null);
+   const [selectedFocusBookingId, setSelectedFocusBookingId] = useState<number | null>(null);
 
    useEffect(() => {
      async function loadCurrentUser() {
@@ -283,6 +292,8 @@ function AdminApp() {
     setError(null);
     setLoading(false);
     setHasLoadedOnce(false);
+    setSelectedFocusDateIso(null);
+    setSelectedFocusBookingId(null);
     setActionSuccess(null);
     setUserCreateSuccess(null);
     setUserCreateError(null);
@@ -344,15 +355,19 @@ function AdminApp() {
        setUsersError(err.message || "Fehler beim Löschen");
      }
    }
-    function handleSelectPlace(placeId: number) {
-      if (selectedPlaceId === placeId && bookingModalOpen) {
+    function handleSelectPlace(placeId: number, options?: PlaceSelectionOptions) {
+      if (selectedPlaceId === placeId && bookingModalOpen && !options?.forceOpen) {
         setSelectedPlaceId(null);
         setBookingModalOpen(false);
+        setSelectedFocusDateIso(null);
+        setSelectedFocusBookingId(null);
         return;
       }
 
       setSelectedPlaceId(placeId);
-      setPlaceModalTab("booking");
+      setSelectedFocusDateIso(options?.focusDateIso ?? null);
+      setSelectedFocusBookingId(options?.focusBookingId ?? null);
+      setPlaceModalTab(options?.preferredTab ?? "booking");
       setBookingModalOpen(true);
     }
 
@@ -374,6 +389,8 @@ function AdminApp() {
         setSearchEndDate(`${year}-${month}-${day}`);
       }
       setPlaceModalTab("booking");
+      setSelectedFocusDateIso(null);
+      setSelectedFocusBookingId(null);
       setBookingModalOpen(true);
     }
 
@@ -590,11 +607,11 @@ function AdminApp() {
             <div
               style={{
                 ...dashboardGridStyle,
-                gridTemplateColumns: "1fr",
+                gridTemplateColumns: "minmax(0, 1fr)",
               }}
             >
                <main style={mainColumnStyle}>
-                 <section style={cardStyle}>
+                 <section style={matrixCardStyle}>
                    <div style={cardHeaderStyle}>
                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
                        <div>
@@ -672,6 +689,8 @@ function AdminApp() {
               if (e.target === e.currentTarget) {
                 setBookingModalOpen(false);
                 setSelectedPlaceId(null);
+                setSelectedFocusDateIso(null);
+                setSelectedFocusBookingId(null);
               }
             }}
           >
@@ -692,6 +711,8 @@ function AdminApp() {
                     onClick={() => {
                       setBookingModalOpen(false);
                       setSelectedPlaceId(null);
+                      setSelectedFocusDateIso(null);
+                      setSelectedFocusBookingId(null);
                     }}
                     style={bookingModalCloseStyle}
                     aria-label="Fenster schließen"
@@ -703,7 +724,11 @@ function AdminApp() {
               <div style={modalTabRowStyle}>
                 <button
                     type="button"
-                    onClick={() => setPlaceModalTab("booking")}
+                    onClick={() => {
+                      setPlaceModalTab("booking");
+                      setSelectedFocusDateIso(null);
+                      setSelectedFocusBookingId(null);
+                    }}
                     style={{
                       ...modalTabButtonStyle,
                       ...(placeModalTab === "booking"
@@ -739,6 +764,8 @@ function AdminApp() {
                   onBookingFinished={() => {
                     setBookingModalOpen(false);
                     setSelectedPlaceId(null);
+                    setSelectedFocusDateIso(null);
+                    setSelectedFocusBookingId(null);
                   }}
                 />
               ) : (
@@ -754,6 +781,8 @@ function AdminApp() {
                   initialStartDate={searchStartDate}
                   initialEndDate={searchEndDate}
                   initialVehicleLengthM={vehicleLengthM}
+                  focusedDateIso={selectedFocusDateIso}
+                  focusedBookingId={selectedFocusBookingId}
                 />
               )}
             </div>
@@ -1013,6 +1042,9 @@ const dashboardGridStyle: React.CSSProperties = {
   gridTemplateColumns: "minmax(0, 1fr)",
   gap: "1.5rem",
   alignItems: "start",
+  width: "100%",
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 
@@ -1021,6 +1053,9 @@ const mainColumnStyle: React.CSSProperties = {
   gridTemplateRows: "min-content 1fr",
   gap: "1.5rem",
   minHeight: "700px",
+  minWidth: 0,
+  maxWidth: "100%",
+  overflowX: "hidden",
 };
 
 const cardStyle: React.CSSProperties = {
@@ -1031,6 +1066,15 @@ const cardStyle: React.CSSProperties = {
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   boxSizing: "border-box",
   transition: "all 0.3s ease",
+  minWidth: 0,
+  maxWidth: "100%",
+};
+
+const matrixCardStyle: React.CSSProperties = {
+  ...cardStyle,
+  minWidth: 0,
+  maxWidth: "100%",
+  overflowX: "hidden",
 };
 
 const cardHeaderStyle: React.CSSProperties = {
