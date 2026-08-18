@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Place, Booking } from "../types";
 import { BookingList } from "./BookingList";
-import { BookingTimeline } from "./BookingTimeline";
-import { createBooking, deleteBooking, updatePlace, markNoShow } from "../services/api";
+import { createBooking, deleteBooking, updatePlace, markNoShow, updateBooking } from "../services/api";
 import { useViewport } from "../hooks/useViewport";
 
 interface Props {
@@ -149,6 +148,14 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const [endDate, setEndDate] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<number | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editGuestName, setEditGuestName] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editVehicleSize, setEditVehicleSize] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("");
@@ -253,6 +260,10 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
   const upcomingBookings = sortedBookings
     .filter((b) => b.start_date >= today)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+  const currentAndUpcomingBookings = sortedBookings.filter(
+    (booking) => booking.end_date > today
+  );
 
   const nextBooking = upcomingBookings[0] ?? null;
 
@@ -391,6 +402,84 @@ export function PlaceDetailPanel({ place, bookings, onBookingCreated, canEditPla
 
   function cancelDeleteBooking() {
     setBookingToDelete(null);
+  }
+
+  function openEditBooking(booking: Booking) {
+    setEditingBooking(booking);
+    setEditGuestName(booking.guest_name);
+    setEditStartDate(booking.start_date);
+    setEditEndDate(booking.end_date);
+    setEditVehicleSize(booking.vehicle_size || "");
+    setEditNotes(booking.notes || "");
+    setEditError(null);
+  }
+
+  function closeEditBooking() {
+    setEditingBooking(null);
+    setEditGuestName("");
+    setEditStartDate("");
+    setEditEndDate("");
+    setEditVehicleSize("");
+    setEditNotes("");
+    setEditError(null);
+  }
+
+  async function handleSaveEditedBooking() {
+    if (!editingBooking) return;
+
+    if (!editGuestName.trim()) {
+      setEditError("Bitte einen Gastnamen eingeben.");
+      return;
+    }
+
+    if (!editStartDate || !editEndDate) {
+      setEditError("Bitte Anreise und Abreise auswählen.");
+      return;
+    }
+
+    if (editStartDate >= editEndDate) {
+      setEditError("Die Abreise muss nach der Anreise liegen.");
+      return;
+    }
+
+    try {
+      setEditSaving(true);
+      setEditError(null);
+
+      await updateBooking(editingBooking.id, {
+        place_id: editingBooking.place_id,
+        start_date: editStartDate,
+        end_date: editEndDate,
+        guest_name: editGuestName.trim(),
+        guest_street: editingBooking.guest_street || undefined,
+        guest_postal_code: editingBooking.guest_postal_code || undefined,
+        guest_city: editingBooking.guest_city || undefined,
+        nationality: editingBooking.nationality || undefined,
+        adult_count: editingBooking.adult_count ?? editingBooking.people_count ?? 1,
+        child_count: editingBooking.child_count ?? 0,
+        day_visitor_count: editingBooking.day_visitor_count ?? 0,
+        has_electricity: Boolean(editingBooking.has_electricity),
+        has_waste: Boolean(editingBooking.has_waste),
+        has_rhine_view: Boolean(editingBooking.has_rhine_view),
+        dog_count: editingBooking.dog_count ?? 0,
+        car_count: editingBooking.car_count ?? 0,
+        motorcycle_count: editingBooking.motorcycle_count ?? 0,
+        camper_count: editingBooking.camper_count ?? 0,
+        camper_length_m: editingBooking.camper_length_m ?? null,
+        tent_tariff_code: editingBooking.tent_tariff_code ?? null,
+        place_price_per_night: editingBooking.place_price_per_night ?? currentPlace.price_per_night ?? 15,
+        vehicle_size: editVehicleSize,
+        tent_count: editingBooking.tent_count ?? null,
+        notes: editNotes,
+      });
+
+      await onBookingCreated();
+      closeEditBooking();
+    } catch (err: any) {
+      setEditError(err.message || "Fehler beim Bearbeiten der Buchung");
+    } finally {
+      setEditSaving(false);
+    }
   }
   const isBlockedPlace = currentPlace.type === "Gesperrt";
   const isPermanentPlace = currentPlace.type === "Dauercamper";
@@ -811,6 +900,23 @@ const isTentAreaFull =
               </div>
             </section>
           )}
+          <section style={panelStyle}>
+              <div style={sectionHeaderStyle}>
+                  <div>
+                      <h3 style={sectionTitleStyle}>Buchungen</h3>
+                      <p style={sectionSubtitleStyle}>
+                          Aktuelle und zukünftige Buchungen für Platz {currentPlace.name}.
+                      </p>
+                  </div>
+              </div>
+
+              <BookingList
+                bookings={currentAndUpcomingBookings}
+                onDelete={requestDeleteBooking}
+                onEdit={openEditBooking}
+              />
+          </section>
+
           {canEditPlaces && (
               <section style={panelStyle}>
                   <div style={sectionHeaderStyle}>
@@ -915,33 +1021,91 @@ const isTentAreaFull =
                   </div>
               </section>
           )}
-          <section style={panelStyle}>
-              <div style={sectionHeaderStyle}>
+
+          {editingBooking && (
+            <div style={modalOverlayStyle}>
+              <div style={modalCardStyle}>
+                <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "#163126" }}>
+                  Buchung bearbeiten
+                </h3>
+
+                <div style={{ display: "grid", gap: "0.65rem" }}>
                   <div>
-                      <h3 style={sectionTitleStyle}>Belegungsübersicht</h3>
-                      <p style={sectionSubtitleStyle}>
-                          Zeitliche Übersicht der vorhandenen Buchungen für diesen Platz.
-                      </p>
+                    <label style={labelStyle}>Gastname</label>
+                    <input
+                      value={editGuestName}
+                      onChange={(e) => setEditGuestName(e.target.value)}
+                      style={inputStyle}
+                    />
                   </div>
-              </div>
 
-              <div style={innerSurfaceStyle}>
-                  <BookingTimeline bookings={sortedBookings}/>
-              </div>
-          </section>
-
-          <section style={panelStyle}>
-              <div style={sectionHeaderStyle}>
                   <div>
-                      <h3 style={sectionTitleStyle}>Buchungen</h3>
-                      <p style={sectionSubtitleStyle}>
-                          Alle vorhandenen Buchungen für Platz {currentPlace.name}.
-                      </p>
+                    <label style={labelStyle}>Anreise</label>
+                    <input
+                      type="date"
+                      value={editStartDate}
+                      onChange={(e) => setEditStartDate(e.target.value)}
+                      style={inputStyle}
+                    />
                   </div>
-              </div>
 
-              <BookingList bookings={sortedBookings} onDelete={requestDeleteBooking}/>
-          </section>
+                  <div>
+                    <label style={labelStyle}>Abreise</label>
+                    <input
+                      type="date"
+                      value={editEndDate}
+                      onChange={(e) => setEditEndDate(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Fahrzeug</label>
+                    <input
+                      value={editVehicleSize}
+                      onChange={(e) => setEditVehicleSize(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Notizen</label>
+                    <input
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                {editError && (
+                  <div
+                    style={{
+                      ...infoBoxStyle,
+                      backgroundColor: "#fee2e2",
+                      color: "#991b1b",
+                      borderColor: "#fecaca",
+                    }}
+                  >
+                    {editError}
+                  </div>
+                )}
+
+                <div style={modalButtonRowStyle}>
+                  <button onClick={closeEditBooking} style={secondaryButtonStyle} disabled={editSaving}>
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleSaveEditedBooking}
+                    style={primaryButtonStyle}
+                    disabled={editSaving}
+                  >
+                    {editSaving ? "Speichert ..." : "Speichern"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {bookingToDelete !== null && (
               <div style={modalOverlayStyle}>
@@ -1233,12 +1397,6 @@ const dangerButtonStyle: React.CSSProperties = {
     fontWeight: 700,
 };
 
-const innerSurfaceStyle: React.CSSProperties = {
-    padding: "0.85rem",
-    borderRadius: "0.85rem",
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e5e7eb",
-};
 
 const infoBoxStyle: React.CSSProperties = {
     marginTop: "0.9rem",

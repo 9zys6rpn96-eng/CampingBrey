@@ -3,6 +3,7 @@ import type { Booking } from "../types";
 interface BookingListProps {
   bookings: Booking[];
   onDelete?: (bookingId: number) => void;
+  onEdit?: (booking: Booking) => void;
 }
 
 function formatDate(dateString: string) {
@@ -33,7 +34,7 @@ function getStayLength(startDate: string, endDate: string) {
   return nights === 1 ? "1 Nacht" : `${nights} Nächte`;
 }
 
-export function BookingList({ bookings, onDelete }: BookingListProps) {
+export function BookingList({ bookings, onDelete, onEdit }: BookingListProps) {
   const sortedBookings = [...bookings].sort((a, b) =>
     a.start_date.localeCompare(b.start_date)
   );
@@ -186,22 +187,42 @@ export function BookingList({ bookings, onDelete }: BookingListProps) {
                   )}
               </div>
 
-              {onDelete && (
-                  <button
+              {(onDelete || onEdit) && (
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(b)}
+                      style={{
+                        padding: "0.5rem 0.85rem",
+                        borderRadius: "0.6rem",
+                        border: "1px solid #15803d",
+                        backgroundColor: "#15803d",
+                        color: "white",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Bearbeiten
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
                       onClick={() => onDelete(b.id)}
                       style={{
-                          padding: "0.5rem 0.85rem",
-                          borderRadius: "0.6rem",
-                          border: "1px solid #dc2626",
-                          backgroundColor: "#dc2626",
-                          color: "white",
-                          cursor: "pointer",
-                          fontWeight: 600,
-                }}
-              >
-                Storno
-              </button>
-            )}
+                        padding: "0.5rem 0.85rem",
+                        borderRadius: "0.6rem",
+                        border: "1px solid #dc2626",
+                        backgroundColor: "#dc2626",
+                        color: "white",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Storno
+                    </button>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       ))}
