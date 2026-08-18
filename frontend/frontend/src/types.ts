@@ -147,3 +147,16 @@ export interface CurrentUser {
   username: string;
   role: string;
 }
+
+export interface BackupFileMeta {
+  file_name: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface BackupRestoreResponse {
+  message: string;
+  restored_file: string;
+  safety_backup_file: string;
+}
+

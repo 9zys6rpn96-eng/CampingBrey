@@ -18,8 +18,12 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://camping:camping@db:5432/camping
+      BACKUP_DIR: /var/backups/campingplatz
+      BACKUP_RETENTION_DAYS: 30
     depends_on:
       - db
+    volumes:
+      - backup_data:/var/backups/campingplatz
     ports:
       - "127.0.0.1:8000:8000"
 
@@ -35,3 +39,4 @@ services:
 
 volumes:
   db_data:
+  backup_data:

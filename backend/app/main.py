@@ -1,10 +1,16 @@
+import os
+import subprocess
+from pathlib import Path
+from urllib.parse import urlparse
+import psycopg2
 from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from .database import Base, engine, SessionLocal
 from . import models, schemas
 from .billing import ensure_default_tariffs, get_active_tariffs, build_quote
@@ -15,6 +21,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 app = FastAPI()
 
 DEFAULT_PLACE_PRICE_PER_NIGHT = Decimal("15.00")
+BACKUP_DIR = Path(os.getenv("BACKUP_DIR", "/var/backups/campingplatz"))
+BACKUP_RETENTION_DAYS = int(os.getenv("BACKUP_RETENTION_DAYS", "30"))
+BACKUP_FILE_PREFIX = "camping_backup_"
+BACKUP_FILE_SUFFIX = ".dump"
+BACKUP_RESTORE_SAFETY_PREFIX = "pre_restore_backup_"
+BACKUP_ALLOWED_PREFIXES = (BACKUP_FILE_PREFIX, BACKUP_RESTORE_SAFETY_PREFIX)
 
 
 def quantize_money(value: Decimal) -> Decimal:
@@ -44,6 +56,215 @@ def normalize_optional_text(value: str | None) -> str | None:
 
     normalized = value.strip()
     return normalized or None
+
+
+def ensure_backup_dir_exists() -> None:
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def parse_database_url_for_pg_dump(database_url: str) -> dict[str, str]:
+    parsed = urlparse(database_url)
+    if parsed.scheme not in {"postgresql", "postgres"}:
+        raise HTTPException(status_code=500, detail="Backup unterstützt nur PostgreSQL")
+
+    database_name = parsed.path.lstrip("/")
+    if not database_name:
+        raise HTTPException(status_code=500, detail="Ungültige DATABASE_URL für Backup")
+
+    return {
+        "host": parsed.hostname or "localhost",
+        "port": str(parsed.port or 5432),
+        "user": parsed.username or "",
+        "password": parsed.password or "",
+        "database": database_name,
+    }
+
+
+def build_backup_file_metadata(file_path: Path) -> dict:
+    stat = file_path.stat()
+    return {
+        "file_name": file_path.name,
+        "size_bytes": stat.st_size,
+        "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+    }
+
+
+def iter_backup_paths() -> list[Path]:
+    ensure_backup_dir_exists()
+    files: list[Path] = []
+    for prefix in BACKUP_ALLOWED_PREFIXES:
+        files.extend(
+            path
+            for path in BACKUP_DIR.glob(f"{prefix}*{BACKUP_FILE_SUFFIX}")
+            if path.is_file()
+        )
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return files
+
+
+def list_backup_files() -> list[dict]:
+    return [build_backup_file_metadata(path) for path in iter_backup_paths()]
+
+
+def remove_expired_backups() -> None:
+    if BACKUP_RETENTION_DAYS <= 0:
+        return
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=BACKUP_RETENTION_DAYS)
+    for path in iter_backup_paths():
+        if not path.is_file():
+            continue
+        modified_at = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        if modified_at < cutoff:
+            path.unlink(missing_ok=True)
+
+
+def create_database_backup(prefix: str = BACKUP_FILE_PREFIX) -> dict:
+    ensure_backup_dir_exists()
+    db_config = parse_database_url_for_pg_dump(
+        os.getenv("DATABASE_URL", "postgresql://camping:camping@localhost:5432/camping")
+    )
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    backup_file = BACKUP_DIR / f"{prefix}{timestamp}{BACKUP_FILE_SUFFIX}"
+
+    cmd = [
+        "pg_dump",
+        "-h",
+        db_config["host"],
+        "-p",
+        db_config["port"],
+        "-U",
+        db_config["user"],
+        "-d",
+        db_config["database"],
+        "-F",
+        "c",
+        "-f",
+        str(backup_file),
+    ]
+
+    env = os.environ.copy()
+    if db_config["password"]:
+        env["PGPASSWORD"] = db_config["password"]
+
+    try:
+        subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="pg_dump ist auf dem Server nicht verfügbar") from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        raise HTTPException(status_code=500, detail=f"Backup fehlgeschlagen: {stderr or 'Unbekannter Fehler'}") from exc
+
+    remove_expired_backups()
+    return build_backup_file_metadata(backup_file)
+
+
+def resolve_backup_file(file_name: str) -> Path:
+    safe_name = Path(file_name).name
+    if safe_name != file_name:
+        raise HTTPException(status_code=400, detail="Ungültiger Dateiname")
+
+    if not (safe_name.endswith(BACKUP_FILE_SUFFIX) and safe_name.startswith(BACKUP_ALLOWED_PREFIXES)):
+        raise HTTPException(status_code=400, detail="Ungültiger Dateiname")
+
+    target = BACKUP_DIR / safe_name
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="Backup-Datei nicht gefunden")
+
+    return target
+
+
+def terminate_database_connections(db_config: dict[str, str]) -> None:
+    maintenance_db = os.getenv("BACKUP_MAINTENANCE_DB", "postgres")
+    try:
+        with psycopg2.connect(
+            host=db_config["host"],
+            port=db_config["port"],
+            user=db_config["user"],
+            password=db_config["password"],
+            dbname=maintenance_db,
+        ) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = %s
+                      AND pid <> pg_backend_pid()
+                    """,
+                    (db_config["database"],),
+                )
+    except psycopg2.Error as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Offene Datenbankverbindungen konnten nicht beendet werden: {str(exc).strip()}",
+        ) from exc
+
+
+def restore_database_backup(file_name: str) -> dict[str, str]:
+    target_backup = resolve_backup_file(file_name)
+    safety_backup = create_database_backup(prefix=BACKUP_RESTORE_SAFETY_PREFIX)
+    db_config = parse_database_url_for_pg_dump(
+        os.getenv("DATABASE_URL", "postgresql://camping:camping@localhost:5432/camping")
+    )
+
+    # Close SQLAlchemy pool connections before restore to avoid lock conflicts.
+    engine.dispose()
+    terminate_database_connections(db_config)
+
+    restore_cmd = [
+        "pg_restore",
+        "-h",
+        db_config["host"],
+        "-p",
+        db_config["port"],
+        "-U",
+        db_config["user"],
+        "-d",
+        db_config["database"],
+        "--clean",
+        "--if-exists",
+        "--no-owner",
+        "--no-privileges",
+        str(target_backup),
+    ]
+
+    env = os.environ.copy()
+    if db_config["password"]:
+        env["PGPASSWORD"] = db_config["password"]
+
+    def is_ignorable_transaction_timeout_warning(stderr_text: str) -> bool:
+        normalized = (stderr_text or "").lower()
+        if "unrecognized configuration parameter \"transaction_timeout\"" not in normalized:
+            return False
+        if "errors ignored on restore: 1" not in normalized:
+            return False
+        # Treat this as ignorable only when the sole failing query is the SET transaction_timeout.
+        return normalized.count("could not execute query") == 1
+
+    try:
+        subprocess.run(restore_cmd, env=env, check=True, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="pg_restore ist auf dem Server nicht verfügbar") from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        if is_ignorable_transaction_timeout_warning(stderr):
+            return {
+                "message": "Backup wurde wiederhergestellt (mit kompatibler Warnung zu transaction_timeout)",
+                "restored_file": target_backup.name,
+                "safety_backup_file": safety_backup["file_name"],
+            }
+        raise HTTPException(status_code=500, detail=f"Restore fehlgeschlagen: {stderr or 'Unbekannter Fehler'}") from exc
+    finally:
+        engine.dispose()
+
+    return {
+        "message": "Backup wurde erfolgreich wiederhergestellt",
+        "restored_file": target_backup.name,
+        "safety_backup_file": safety_backup["file_name"],
+    }
 
 
 def run_schema_migrations():
@@ -360,6 +581,24 @@ def require_developer(
     return current_user
 
 
+def require_developer_for_restore(token: str = Depends(oauth2_scheme)):
+    payload = decode_access_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Ungültiger Token")
+
+    username = payload.get("sub")
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="User nicht gefunden")
+        if user.role != "developer":
+            raise HTTPException(status_code=403, detail="Developer-Zugriff erforderlich")
+        return {"username": user.username, "role": user.role}
+    finally:
+        db.close()
+
+
 def calculate_place_status_for_range(
     place: models.Place,
     bookings: list[models.Booking],
@@ -480,6 +719,41 @@ def would_exceed_capacity(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/backups", response_model=list[schemas.BackupFileRead])
+def list_backups(
+    current_user: models.User = Depends(require_operator_or_developer),
+):
+    return list_backup_files()
+
+
+@app.post("/backups", response_model=schemas.BackupFileRead)
+def create_backup(
+    current_user: models.User = Depends(require_operator_or_developer),
+):
+    return create_database_backup()
+
+
+@app.get("/backups/{file_name}")
+def download_backup(
+    file_name: str,
+    current_user: models.User = Depends(require_operator_or_developer),
+):
+    target = resolve_backup_file(file_name)
+    return FileResponse(
+        path=str(target),
+        filename=target.name,
+        media_type="application/octet-stream",
+    )
+
+
+@app.post("/backups/{file_name}/restore", response_model=schemas.BackupRestoreResponse)
+def restore_backup(
+    file_name: str,
+    current_user: dict = Depends(require_developer_for_restore),
+):
+    return restore_database_backup(file_name)
 
 
 @app.get("/tariffs", response_model=list[schemas.TariffRead])

@@ -1,4 +1,4 @@
-import type { Place, Booking, PlaceStatus, User, LoginResponse, CurrentUser, BookingReceipt, BookingQuote, Tariff } from "../types";
+import type { Place, Booking, PlaceStatus, User, LoginResponse, CurrentUser, BookingReceipt, BookingQuote, Tariff, BackupFileMeta, BackupRestoreResponse } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -357,6 +357,87 @@ export async function quoteBooking(data: {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || "Preisberechnung fehlgeschlagen");
+  }
+
+  return res.json();
+}
+
+export async function fetchBackups(): Promise<BackupFileMeta[]> {
+  return apiGet<BackupFileMeta[]>("/backups");
+}
+
+export async function createBackup(): Promise<BackupFileMeta> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/backups`, {
+    method: "POST",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Backup konnte nicht erstellt werden");
+  }
+
+  return res.json();
+}
+
+export async function downloadBackup(fileName: string): Promise<void> {
+  const token = getAuthToken();
+  const encoded = encodeURIComponent(fileName);
+  const res = await fetch(`${API_BASE_URL}/backups/${encoded}`, {
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Backup konnte nicht heruntergeladen werden");
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function restoreBackup(fileName: string): Promise<BackupRestoreResponse> {
+  const token = getAuthToken();
+  const encoded = encodeURIComponent(fileName);
+  const res = await fetch(`${API_BASE_URL}/backups/${encoded}/restore`, {
+    method: "POST",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined,
+  });
+
+  if (!res.ok) {
+    const rawText = await res.text();
+    let detail = "";
+
+    try {
+      const parsed = JSON.parse(rawText);
+      detail = parsed.detail || "";
+    } catch {
+      detail = rawText.trim();
+    }
+
+    if (res.status === 404 && !detail) {
+      throw new Error("Restore-Endpunkt nicht gefunden. Backend bitte neu starten oder neu deployen.");
+    }
+
+    throw new Error(detail || `Restore konnte nicht ausgeführt werden (HTTP ${res.status})`);
   }
 
   return res.json();

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field
 
@@ -218,3 +218,17 @@ class UserRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BackupFileRead(BaseModel):
+    file_name: str
+    size_bytes: int
+    created_at: datetime
+
+
+class BackupRestoreResponse(BaseModel):
+    message: str
+    restored_file: str
+    safety_backup_file: str
+
+

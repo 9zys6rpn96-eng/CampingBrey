@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Place, Booking, PlaceStatus, User } from "./types";
+import type { Place, Booking, PlaceStatus, User, BackupFileMeta } from "./types";
 import {
   fetchPlaces,
   fetchBookings,
@@ -10,6 +10,10 @@ import {
   fetchAvailablePlaces,
   fetchUsers,
   deleteUser,
+  fetchBackups,
+  createBackup,
+  downloadBackup,
+  restoreBackup,
 } from "./services/api";
 import { CampingMap } from "./components/CampingMap";
 import { OccupancyMatrix } from "./components/OccupancyMatrix";
@@ -113,6 +117,11 @@ function AdminApp() {
    const [viewMode, setViewMode] = useState<"map" | "matrix">("map");
    const [selectedFocusDateIso, setSelectedFocusDateIso] = useState<string | null>(null);
    const [selectedFocusBookingId, setSelectedFocusBookingId] = useState<number | null>(null);
+   const [backups, setBackups] = useState<BackupFileMeta[]>([]);
+   const [backupLoading, setBackupLoading] = useState(false);
+   const [backupActionLoading, setBackupActionLoading] = useState(false);
+   const [backupError, setBackupError] = useState<string | null>(null);
+   const [backupSuccess, setBackupSuccess] = useState<string | null>(null);
 
    useEffect(() => {
      async function loadCurrentUser() {
@@ -316,6 +325,78 @@ function AdminApp() {
        loadUsers();
      }
    }, [currentUser]);
+
+   useEffect(() => {
+     if (currentUser?.role === "developer" || currentUser?.role === "operator") {
+       loadBackups();
+     }
+   }, [currentUser]);
+
+   async function loadBackups() {
+     if (currentUser?.role !== "developer" && currentUser?.role !== "operator") {
+       return;
+     }
+
+     try {
+       setBackupLoading(true);
+       setBackupError(null);
+       const files = await fetchBackups();
+       setBackups(files);
+     } catch (err: any) {
+       setBackupError(err.message || "Backups konnten nicht geladen werden");
+     } finally {
+       setBackupLoading(false);
+     }
+   }
+
+   async function handleCreateBackup() {
+     try {
+       setBackupActionLoading(true);
+       setBackupError(null);
+       setBackupSuccess(null);
+       const created = await createBackup();
+       setBackupSuccess(`Backup erstellt: ${created.file_name}`);
+       await loadBackups();
+     } catch (err: any) {
+       setBackupError(err.message || "Backup konnte nicht erstellt werden");
+     } finally {
+       setBackupActionLoading(false);
+     }
+   }
+
+   async function handleDownloadBackup(fileName: string) {
+     try {
+       setBackupError(null);
+       setBackupSuccess(null);
+       await downloadBackup(fileName);
+       setBackupSuccess(`Download gestartet: ${fileName}`);
+     } catch (err: any) {
+       setBackupError(err.message || "Backup konnte nicht heruntergeladen werden");
+     }
+   }
+
+     async function handleRestoreBackup(fileName: string) {
+       const confirmed = window.confirm(
+         `Backup "${fileName}" wirklich wiederherstellen?\n\nDer aktuelle Stand wird vorher automatisch als Sicherheits-Backup gesichert.`
+       );
+       if (!confirmed) return;
+
+       try {
+         setBackupActionLoading(true);
+         setBackupError(null);
+         setBackupSuccess(null);
+         const result = await restoreBackup(fileName);
+         setBackupSuccess(
+           `${result.message}. Sicherheits-Backup: ${result.safety_backup_file}`
+         );
+         await loadBackups();
+         await reloadData();
+       } catch (err: any) {
+         setBackupError(err.message || "Backup konnte nicht wiederhergestellt werden");
+       } finally {
+         setBackupActionLoading(false);
+       }
+     }
 
    async function handleCreateUser() {
      try {
@@ -787,6 +868,92 @@ function AdminApp() {
               )}
             </div>
           </div>
+        )}
+
+        {(currentUser.role === "developer" || currentUser.role === "operator") && (
+          <section style={{ ...cardStyle, marginTop: "1rem" }}>
+            <div style={cardHeaderStyle}>
+              <div>
+                <h2 style={cardTitleStyle}>Backups</h2>
+                <p style={cardSubtitleStyle}>
+                  Datenbanksicherung direkt am Server erstellen und herunterladen.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button
+                onClick={handleCreateBackup}
+                disabled={backupActionLoading}
+                style={{
+                  ...primaryButtonStyle,
+                  opacity: backupActionLoading ? 0.65 : 1,
+                  cursor: backupActionLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {backupActionLoading ? "Backup wird erstellt ..." : "Jetzt Backup erstellen"}
+              </button>
+              <button onClick={loadBackups} style={secondaryButtonStyle}>
+                Liste aktualisieren
+              </button>
+            </div>
+
+            {backupLoading && <div style={{ marginTop: "1rem", color: colors.muted }}>Backups werden geladen ...</div>}
+            {backupError && <div style={errorBoxStyle}>{backupError}</div>}
+            {backupSuccess && <div style={successBoxStyle}>{backupSuccess}</div>}
+
+            <div style={{ marginTop: "1rem", display: "grid", gap: "0.55rem" }}>
+              {backups.length === 0 && !backupLoading ? (
+                <div style={{ color: colors.muted }}>Noch keine Backup-Dateien vorhanden.</div>
+              ) : (
+                backups.map((backup) => (
+                  <div
+                    key={backup.file_name}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "1rem",
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: "8px",
+                      padding: "0.75rem 0.9rem",
+                      backgroundColor: "#ffffff",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{backup.file_name}</div>
+                      <div style={{ color: colors.muted, fontSize: "0.85rem" }}>
+                        {new Date(backup.created_at).toLocaleString("de-DE")} · {(backup.size_bytes / (1024 * 1024)).toFixed(2)} MB
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => handleDownloadBackup(backup.file_name)}
+                        style={secondaryButtonStyle}
+                      >
+                        Download
+                      </button>
+                      {currentUser.role === "developer" && (
+                        <button
+                          onClick={() => handleRestoreBackup(backup.file_name)}
+                          disabled={backupActionLoading}
+                          style={{
+                            ...secondaryButtonStyle,
+                            border: "1.5px solid #fca5a5",
+                            color: "#991b1b",
+                            opacity: backupActionLoading ? 0.65 : 1,
+                            cursor: backupActionLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Wiederherstellen
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
         )}
 
         {currentUser.role === "developer" && (
